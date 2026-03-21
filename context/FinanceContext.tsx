@@ -18,6 +18,7 @@ export interface Transaction {
   category: string;
   description: string;
   date: string;
+  debtId?: number;
 }
 
 export interface Debt {
@@ -27,7 +28,14 @@ export interface Debt {
   amount: number;
   type: "owe_to" | "owed_by";
   status: "pending" | "partially_paid" | "paid";
-  dueDate?: string;
+  interestRate: number;
+  period: number;
+  processingFee: number;
+  startDate: string;
+  weight?: number;
+  purity?: string;
+  isGoldLoan?: boolean;
+  remainingPrincipal: number;
 }
 
 export interface Ledger {
@@ -106,15 +114,23 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           ...t,
           amount: parseFloat(t.amount.toString()),
           type: t.type as TransactionType,
-          date: t.date.toISOString()
+          date: t.date.toISOString(),
+          debtId: t.debtId || undefined
         })));
         
         setDebts(dbDebts.map((d: any) => ({
           ...d,
           amount: parseFloat(d.amount.toString()),
+          interestRate: parseFloat(d.interestRate?.toString() || "0"),
+          period: d.period || 0,
+          processingFee: parseFloat(d.processingFee?.toString() || "0"),
           type: d.type as any,
           status: d.status as any,
-          dueDate: d.dueDate?.toISOString()
+          startDate: d.startDate?.toISOString(),
+          weight: parseFloat(d.weight?.toString() || "0"),
+          purity: d.purity || undefined,
+          isGoldLoan: d.isGoldLoan || false,
+          remainingPrincipal: parseFloat(d.remainingPrincipal?.toString() || "0"),
         })));
 
         setBudgets(dbBudgets.map((b: any) => ({
@@ -157,7 +173,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ledgerId: Number(newDbTransaction.ledgerId),
       amount: parseFloat(newDbTransaction.amount.toString()),
       type: newDbTransaction.type as TransactionType,
-      date: newDbTransaction.date.toISOString()
+      date: newDbTransaction.date.toISOString(),
+      debtId: newDbTransaction.debtId || undefined
     };
     
     setTransactions([formattedTransaction, ...transactions]);
@@ -181,9 +198,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: Number(newDbDebt.id),
       ledgerId: Number(newDbDebt.ledgerId),
       amount: parseFloat(newDbDebt.amount.toString()),
+      interestRate: parseFloat(newDbDebt.interestRate?.toString() || "0"),
+      period: newDbDebt.period || 0,
+      processingFee: parseFloat(newDbDebt.processingFee?.toString() || "0"),
       type: newDbDebt.type as any,
       status: newDbDebt.status as any,
-      dueDate: newDbDebt.dueDate?.toISOString()
+      startDate: newDbDebt.startDate?.toISOString() || new Date().toISOString(),
+      weight: parseFloat(newDbDebt.weight?.toString() || "0"),
+      purity: newDbDebt.purity || undefined,
+      isGoldLoan: newDbDebt.isGoldLoan || false,
+      remainingPrincipal: parseFloat(newDbDebt.amount?.toString() || "0"), // New debt starts with full amount
     };
     
     setDebts([formattedDebt, ...debts]);

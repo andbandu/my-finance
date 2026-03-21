@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AddTransactionModal } from "./AddTransactionModal";
 import { motion } from "framer-motion";
+import { UpcomingInstallments } from "./UpcomingInstallments";
 
 export const Dashboard = () => {
   const { transactions, ledgers, currentLedgerId, removeTransaction } = useFinance();
@@ -269,8 +270,15 @@ export const Dashboard = () => {
             </Button>
           </motion.div>
         </div>
+        <div className="lg:col-span-4 space-y-12">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.55 }}
+          >
+            <UpcomingInstallments />
+          </motion.div>
 
-        <div className="lg:col-span-4">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}

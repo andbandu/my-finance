@@ -11,7 +11,8 @@ import {
   LogOut,
   Search,
   Layers,
-  Calendar
+  Calendar,
+  Coins
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,7 @@ export const Sidebar = ({ activeTab, setActiveTab }: any) => {
     { id: "transactions", label: "Ledger", icon: Wallet },
     { id: "budgets", label: "Budgets", icon: Receipt },
     { id: "debts", label: "Debts", icon: Users },
+    { id: "gold_loans", label: "Gold Loans", icon: Coins },
     { id: "reports", label: "Insights", icon: FileText },
   ].filter(item => item.label.toLowerCase().includes(searchQuery.toLowerCase()));
 

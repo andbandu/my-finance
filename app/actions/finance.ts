@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { ledgers, transactions, debts, budgets } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 // --- Ledgers ---
@@ -38,9 +38,11 @@ export async function addTransaction(data: {
   category: string;
   description: string;
   date: string;
+  debtId?: number;
 }) {
   const result = await db.insert(transactions).values({
     ...data,
+    amount: data.amount.toString(),
     date: new Date(data.date),
   }).returning();
   revalidatePath("/");
@@ -55,23 +57,52 @@ export async function deleteTransaction(id: number) {
 // --- Debts ---
 
 export async function getDebts(ledgerId: number) {
-  return await db.select()
+  const allDebts = await db.select()
     .from(debts)
     .where(eq(debts.ledgerId, ledgerId))
     .orderBy(desc(debts.createdAt));
+
+  // Fetch all transactions linked to these debts to calculate remaining balance
+  const debtIds = allDebts.map(d => d.id);
+  if (debtIds.length === 0) return [];
+
+  const linkedTransactions = await db.select()
+    .from(transactions)
+    .where(inArray(transactions.debtId, debtIds));
+
+  return allDebts.map(debt => {
+    const repayments = linkedTransactions.filter(t => t.debtId === debt.id);
+    const totalRepaid = repayments.reduce((acc, t) => acc + parseFloat(t.amount), 0);
+    return {
+      ...debt,
+      remainingPrincipal: parseFloat(debt.amount) - totalRepaid,
+      repayments
+    };
+  });
 }
 
 export async function addDebt(data: {
   ledgerId: number;
   person: string;
-  amount: string;
+  amount: any;
   type: string;
   status: string;
-  dueDate?: string;
+  interestRate?: any;
+  period?: number;
+  processingFee?: any;
+  startDate?: string;
+  weight?: any;
+  purity?: string;
+  isGoldLoan?: boolean;
 }) {
   const result = await db.insert(debts).values({
     ...data,
-    dueDate: data.dueDate ? new Date(data.dueDate) : null,
+    amount: data.amount.toString(),
+    interestRate: data.interestRate?.toString() || "0",
+    processingFee: data.processingFee?.toString() || "0",
+    startDate: data.startDate ? new Date(data.startDate) : new Date(),
+    weight: data.weight ? data.weight.toString() : null,
+    isGoldLoan: data.isGoldLoan || false,
   }).returning();
   revalidatePath("/");
   return result[0];

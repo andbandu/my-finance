@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { DebtTracker } from "@/components/debt/DebtTracker";
+import { GoldLoanTracker } from "@/components/debt/GoldLoanTracker";
 import { Reports } from "@/components/reports/Reports";
 
 import { TransactionsView } from "@/components/dashboard/TransactionsView";
@@ -20,6 +21,7 @@ export default function Home() {
       <div className="flex-1 flex flex-col min-w-0">
         {activeTab === "dashboard" && <Dashboard />}
         {activeTab === "debts" && <DebtTracker />}
+        {activeTab === "gold_loans" && <GoldLoanTracker />}
         {activeTab === "reports" && <Reports />}
         {activeTab === "transactions" && <TransactionsView />}
         {activeTab === "budgets" && <BudgetsView />}

@@ -54,3 +54,30 @@ export const Button = ({
     </button>
   );
 };
+export const Badge = ({
+  children,
+  className,
+  variant = "primary",
+  ...props
+}: any) => {
+  const variants = {
+    primary: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+    success: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    warning: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    danger: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+    secondary: "bg-white/5 text-white/40 border-white/5",
+  };
+
+  return (
+    <span
+      className={cn(
+        "px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-widest",
+        variants[variant as keyof typeof variants],
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </span>
+  );
+};
