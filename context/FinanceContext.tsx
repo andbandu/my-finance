@@ -4,7 +4,8 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { 
   getLedgers, addLedger as dbAddLedger, deleteLedger as dbDeleteLedger,
   getTransactions, addTransaction as dbAddTransaction, deleteTransaction as dbDeleteTransaction,
-  getDebts, addDebt as dbAddDebt, deleteDebt as dbDeleteDebt, updateDebtStatus as dbUpdateDebtStatus
+  getDebts, addDebt as dbAddDebt, deleteDebt as dbDeleteDebt, updateDebtStatus as dbUpdateDebtStatus,
+  getBudgets, addBudget as dbAddBudget, deleteBudget as dbDeleteBudget
 } from "@/app/actions/finance";
 
 export type TransactionType = "income" | "expense";
@@ -36,11 +37,21 @@ export interface Ledger {
   color: string;
 }
 
+export interface Budget {
+  id: number;
+  ledgerId: number;
+  category: string;
+  limit: number;
+  icon: string;
+  color: string;
+}
+
 interface FinanceContextType {
   ledgers: Ledger[];
   currentLedgerId: number | null;
   transactions: Transaction[];
   debts: Debt[];
+  budgets: Budget[];
   setCurrentLedgerId: (id: number) => void;
   addLedger: (ledger: Omit<Ledger, "id">) => Promise<void>;
   removeLedger: (id: number) => Promise<void>;
@@ -49,6 +60,8 @@ interface FinanceContextType {
   addDebt: (debt: Omit<Debt, "id" | "ledgerId">) => Promise<void>;
   removeDebt: (id: number) => Promise<void>;
   updateDebtStatus: (id: number, status: Debt["status"]) => Promise<void>;
+  addBudget: (budget: Omit<Budget, "id" | "ledgerId">) => Promise<void>;
+  removeBudget: (id: number) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -58,6 +71,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [currentLedgerId, setCurrentLedgerId] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -82,9 +96,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (currentLedgerId) {
       const fetchData = async () => {
-        const [dbTransactions, dbDebts] = await Promise.all([
+        const [dbTransactions, dbDebts, dbBudgets] = await Promise.all([
           getTransactions(currentLedgerId),
-          getDebts(currentLedgerId)
+          getDebts(currentLedgerId),
+          getBudgets(currentLedgerId)
         ]);
         
         setTransactions(dbTransactions.map((t: any) => ({
@@ -100,6 +115,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           type: d.type as any,
           status: d.status as any,
           dueDate: d.dueDate?.toISOString()
+        })));
+
+        setBudgets(dbBudgets.map((b: any) => ({
+          ...b,
+          limit: parseFloat(b.limit.toString())
         })));
       };
       fetchData();
@@ -179,6 +199,22 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setDebts(debts.map((d) => (d.id === id ? { ...d, status } : d)));
   };
 
+  const addBudget = async (budget: Omit<Budget, "id" | "ledgerId">) => {
+    if (!currentLedgerId) return;
+    const newDbBudget = await dbAddBudget({
+      ...budget,
+      ledgerId: currentLedgerId,
+      limit: budget.limit.toString()
+    });
+    
+    setBudgets([{ ...newDbBudget, limit: parseFloat(newDbBudget.limit.toString()) }, ...budgets]);
+  };
+
+  const removeBudget = async (id: number) => {
+    await dbDeleteBudget(id);
+    setBudgets(budgets.filter((b) => b.id !== id));
+  };
+
   return (
     <FinanceContext.Provider
       value={{
@@ -186,6 +222,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentLedgerId,
         transactions: transactions.filter((t) => t.ledgerId === currentLedgerId),
         debts: debts.filter((d) => d.ledgerId === currentLedgerId),
+        budgets: budgets.filter((b) => b.ledgerId === currentLedgerId),
         setCurrentLedgerId,
         addLedger,
         removeLedger,
@@ -194,6 +231,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addDebt,
         removeDebt,
         updateDebtStatus,
+        addBudget,
+        removeBudget,
       }}
     >
       {children}

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { ledgers, transactions, debts } from "@/db/schema";
+import { ledgers, transactions, debts, budgets } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -84,5 +84,31 @@ export async function updateDebtStatus(id: number, status: string) {
 
 export async function deleteDebt(id: number) {
   await db.delete(debts).where(eq(debts.id, id));
+  revalidatePath("/");
+}
+
+// --- Budgets ---
+
+export async function getBudgets(ledgerId: number) {
+  return await db.select()
+    .from(budgets)
+    .where(eq(budgets.ledgerId, ledgerId))
+    .orderBy(desc(budgets.createdAt));
+}
+
+export async function addBudget(data: {
+  ledgerId: number;
+  category: string;
+  limit: any;
+  icon: string;
+  color: string;
+}) {
+  const result = await db.insert(budgets).values(data).returning();
+  revalidatePath("/");
+  return result[0];
+}
+
+export async function deleteBudget(id: number) {
+  await db.delete(budgets).where(eq(budgets.id, id));
   revalidatePath("/");
 }
