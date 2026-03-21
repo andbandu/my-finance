@@ -1,12 +1,17 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { 
+  getLedgers, addLedger as dbAddLedger, deleteLedger as dbDeleteLedger,
+  getTransactions, addTransaction as dbAddTransaction, deleteTransaction as dbDeleteTransaction,
+  getDebts, addDebt as dbAddDebt, deleteDebt as dbDeleteDebt, updateDebtStatus as dbUpdateDebtStatus
+} from "@/app/actions/finance";
 
 export type TransactionType = "income" | "expense";
 
 export interface Transaction {
-  id: string;
-  ledgerId: string;
+  id: number;
+  ledgerId: number;
   type: TransactionType;
   amount: number;
   category: string;
@@ -15,8 +20,8 @@ export interface Transaction {
 }
 
 export interface Debt {
-  id: string;
-  ledgerId: string;
+  id: number;
+  ledgerId: number;
   person: string;
   amount: number;
   type: "owe_to" | "owed_by";
@@ -25,7 +30,7 @@ export interface Debt {
 }
 
 export interface Ledger {
-  id: string;
+  id: number;
   name: string;
   description: string;
   color: string;
@@ -33,102 +38,140 @@ export interface Ledger {
 
 interface FinanceContextType {
   ledgers: Ledger[];
-  currentLedgerId: string;
+  currentLedgerId: number | null;
   transactions: Transaction[];
   debts: Debt[];
-  setCurrentLedgerId: (id: string) => void;
-  addLedger: (ledger: Omit<Ledger, "id">) => void;
-  removeLedger: (id: string) => void;
-  addTransaction: (transaction: Omit<Transaction, "id" | "ledgerId">) => void;
-  removeTransaction: (id: string) => void;
-  addDebt: (debt: Omit<Debt, "id" | "ledgerId">) => void;
-  removeDebt: (id: string) => void;
-  updateDebtStatus: (id: string, status: Debt["status"]) => void;
+  setCurrentLedgerId: (id: number) => void;
+  addLedger: (ledger: Omit<Ledger, "id">) => Promise<void>;
+  removeLedger: (id: number) => Promise<void>;
+  addTransaction: (transaction: Omit<Transaction, "id" | "ledgerId">) => Promise<void>;
+  removeTransaction: (id: number) => Promise<void>;
+  addDebt: (debt: Omit<Debt, "id" | "ledgerId">) => Promise<void>;
+  removeDebt: (id: number) => Promise<void>;
+  updateDebtStatus: (id: number, status: Debt["status"]) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [ledgers, setLedgers] = useState<Ledger[]>([]);
-  const [currentLedgerId, setCurrentLedgerId] = useState<string>("");
+  const [currentLedgerId, setCurrentLedgerId] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
 
-  // Load from local storage
+  // Initial Data Fetch
   useEffect(() => {
-    const savedLedgers = localStorage.getItem("finance_ledgers");
-    const savedTransactions = localStorage.getItem("finance_transactions");
-    const savedDebts = localStorage.getItem("finance_debts");
-
-    if (savedLedgers) {
-      const parsed = JSON.parse(savedLedgers);
-      setLedgers(parsed);
-      if (parsed.length > 0) setCurrentLedgerId(parsed[0].id);
-    } else {
-      // Default ledger
-      const defaultLedger = { id: "1", name: "Personal", description: "Default Ledger", color: "#3b82f6" };
-      setLedgers([defaultLedger]);
-      setCurrentLedgerId("1");
-    }
-
-    if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
-    if (savedDebts) setDebts(JSON.parse(savedDebts));
+    const init = async () => {
+      const dbLedgers = await getLedgers();
+      const castLedgers: Ledger[] = dbLedgers.map((l: any) => ({ 
+        id: l.id,
+        name: l.name,
+        description: l.description || "", 
+        color: l.color || "#3b82f6" 
+      }));
+      setLedgers(castLedgers);
+      
+      if (castLedgers.length > 0) {
+        setCurrentLedgerId(castLedgers[0].id);
+      }
+    };
+    init();
   }, []);
 
-  // Sync to local storage
+  // Fetch data for current ledger
   useEffect(() => {
-    localStorage.setItem("finance_ledgers", JSON.stringify(ledgers));
-  }, [ledgers]);
+    if (currentLedgerId) {
+      const fetchData = async () => {
+        const [dbTransactions, dbDebts] = await Promise.all([
+          getTransactions(currentLedgerId),
+          getDebts(currentLedgerId)
+        ]);
+        
+        setTransactions(dbTransactions.map((t: any) => ({
+          ...t,
+          amount: parseFloat(t.amount.toString()),
+          type: t.type as TransactionType,
+          date: t.date.toISOString()
+        })));
+        
+        setDebts(dbDebts.map((d: any) => ({
+          ...d,
+          amount: parseFloat(d.amount.toString()),
+          type: d.type as any,
+          status: d.status as any,
+          dueDate: d.dueDate?.toISOString()
+        })));
+      };
+      fetchData();
+    }
+  }, [currentLedgerId]);
 
-  useEffect(() => {
-    localStorage.setItem("finance_transactions", JSON.stringify(transactions));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem("finance_debts", JSON.stringify(debts));
-  }, [debts]);
-
-  const addLedger = (ledger: Omit<Ledger, "id">) => {
-    const newLedger = { ...ledger, id: Math.random().toString(36).substr(2, 9) };
-    setLedgers([...ledgers, newLedger]);
+  const addLedger = async (ledger: Omit<Ledger, "id">) => {
+    const newDbLedger = await dbAddLedger(ledger);
+    const newLedger = { ...newDbLedger, description: newDbLedger.description || "", color: newDbLedger.color || "#3b82f6" };
+    setLedgers([newLedger, ...ledgers]);
+    setCurrentLedgerId(newLedger.id);
   };
 
-  const removeLedger = (id: string) => {
+  const removeLedger = async (id: number) => {
+    await dbDeleteLedger(id);
     setLedgers(ledgers.filter((l) => l.id !== id));
-    setTransactions(transactions.filter((t) => t.ledgerId !== id));
-    setDebts(debts.filter((d) => d.ledgerId !== id));
     if (currentLedgerId === id && ledgers.length > 1) {
       setCurrentLedgerId(ledgers.filter((l) => l.id !== id)[0].id);
+    } else if (currentLedgerId === id) {
+      setCurrentLedgerId(null);
     }
   };
 
-  const addTransaction = (transaction: Omit<Transaction, "id" | "ledgerId">) => {
-    const newTransaction = {
+  const addTransaction = async (transaction: Omit<Transaction, "id" | "ledgerId">) => {
+    if (!currentLedgerId) return;
+    const newDbTransaction = await dbAddTransaction({
       ...transaction,
-      id: Math.random().toString(36).substr(2, 9),
       ledgerId: currentLedgerId,
+      amount: transaction.amount.toString()
+    });
+    
+    const formattedTransaction: Transaction = {
+      ...newDbTransaction,
+      amount: parseFloat(newDbTransaction.amount.toString()),
+      type: newDbTransaction.type as TransactionType,
+      date: newDbTransaction.date.toISOString()
     };
-    setTransactions([newTransaction, ...transactions]);
+    
+    setTransactions([formattedTransaction, ...transactions]);
   };
 
-  const removeTransaction = (id: string) => {
+  const removeTransaction = async (id: number) => {
+    await dbDeleteTransaction(id);
     setTransactions(transactions.filter((t) => t.id !== id));
   };
 
-  const addDebt = (debt: Omit<Debt, "id" | "ledgerId">) => {
-    const newDebt = {
+  const addDebt = async (debt: Omit<Debt, "id" | "ledgerId">) => {
+    if (!currentLedgerId) return;
+    const newDbDebt = await dbAddDebt({
       ...debt,
-      id: Math.random().toString(36).substr(2, 9),
       ledgerId: currentLedgerId,
+      amount: debt.amount.toString()
+    });
+    
+    const formattedDebt: Debt = {
+      ...newDbDebt,
+      amount: parseFloat(newDbDebt.amount.toString()),
+      type: newDbDebt.type as any,
+      status: newDbDebt.status as any,
+      dueDate: newDbDebt.dueDate?.toISOString()
     };
-    setDebts([newDebt, ...debts]);
+    
+    setDebts([formattedDebt, ...debts]);
   };
 
-  const removeDebt = (id: string) => {
+  const removeDebt = async (id: number) => {
+    await dbDeleteDebt(id);
     setDebts(debts.filter((d) => d.id !== id));
   };
 
-  const updateDebtStatus = (id: string, status: Debt["status"]) => {
+  const updateDebtStatus = async (id: number, status: Debt["status"]) => {
+    await dbUpdateDebtStatus(id, status);
     setDebts(debts.map((d) => (d.id === id ? { ...d, status } : d)));
   };
 

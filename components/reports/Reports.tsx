@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useFinance } from "@/context/FinanceContext";
+import { useFinance, Transaction } from "@/context/FinanceContext";
 import { Card, Button } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 import { 
@@ -10,7 +10,10 @@ import {
   Download, 
   TrendingUp, 
   TrendingDown, 
-  Target
+  Target,
+  Home as HomeIcon,
+  ShoppingBag,
+  Car
 } from "lucide-react";
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, 
@@ -23,10 +26,10 @@ export const Reports = () => {
 
   const expenseByCategory = transactions
     .filter(t => t.type === "expense")
-    .reduce((acc: any, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
+    .reduce((acc: Record<string, number>, t: Transaction) => {
+      acc[t.category] = (acc[t.category] || 0) + (t.amount as number);
       return acc;
-    }, {});
+    }, {} as Record<string, number>);
 
   const pieData = Object.keys(expenseByCategory).map(name => ({
     name,
@@ -44,6 +47,13 @@ export const Reports = () => {
   const incomeVsExpense = [
     { name: "Income", amount: totalIncome },
     { name: "Expense", amount: totalExpense }
+  ];
+
+  const mockBudgets = [
+    { id: 101, category: "Housing", limit: 2000, current: 1850, icon: HomeIcon, color: "text-blue-400" },
+    { id: 102, category: "Food & Dining", limit: 800, current: 620, icon: ShoppingBag, color: "text-emerald-400" },
+    { id: 103, category: "Transport", limit: 400, current: 415, icon: Car, color: "text-rose-400" },
+    { id: 104, category: "Entertainment", limit: 300, current: 120, icon: Target, color: "text-amber-400" },
   ];
 
   const COLORS = ["#8b5cf6", "#a78bfa", "#6366f1", "#4f46e5", "#3730a3", "#a855f7"];

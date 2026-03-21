@@ -85,9 +85,9 @@ export const Sidebar = ({ activeTab, setActiveTab }: any) => {
           <div className="flex items-center justify-between mb-4 px-2">
             <p className="text-[10px] uppercase tracking-widest text-white/30 font-bold">Your Ledgers</p>
             <button 
-              onClick={() => {
+              onClick={async () => {
                 const name = prompt("Enter ledger name:");
-                if (name) addLedger({ name, description: "", color: `#${Math.floor(Math.random()*16777215).toString(16)}` });
+                if (name) await addLedger({ name, description: "", color: `#${Math.floor(Math.random()*16777215).toString(16)}` });
               }}
               className="text-white/30 hover:text-white transition-colors"
             >

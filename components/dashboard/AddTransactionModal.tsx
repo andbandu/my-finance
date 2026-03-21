@@ -15,10 +15,10 @@ export const AddTransactionModal = ({ isOpen, onClose }: { isOpen: boolean, onCl
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !description || !category) return;
-    addTransaction({
+    await addTransaction({
       type,
       amount: parseFloat(amount),
       category,

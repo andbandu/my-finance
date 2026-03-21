@@ -22,6 +22,18 @@ import { motion } from "framer-motion";
 export const Dashboard = () => {
   const { transactions, ledgers, currentLedgerId, removeTransaction } = useFinance();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  if (currentLedgerId === null) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-10">
+        <div className="text-center">
+          <Layers size={48} className="mx-auto text-white/10 mb-6" />
+          <h2 className="text-2xl font-bold text-white mb-2">No Ledger Selected</h2>
+          <p className="text-white/40 text-sm">Please select or create a ledger from the sidebar.</p>
+        </div>
+      </div>
+    );
+  }
+
   const currentLedger = ledgers.find((l: Ledger) => l.id === currentLedgerId);
 
   const totalIncome = transactions

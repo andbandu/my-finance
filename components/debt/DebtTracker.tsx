@@ -20,11 +20,11 @@ import { cn } from "@/lib/utils";
 export const DebtTracker = () => {
   const { debts, addDebt, removeDebt, updateDebtStatus } = useFinance();
   const [isAdding, setIsAdding] = useState(false);
-  const [newDebt, setNewDebt] = useState<Omit<Debt, "id" | "ledgerId">>({
+  const [newDebt, setNewDebt] = useState({
     person: "",
-    amount: 0,
-    type: "owe_to",
-    status: "pending",
+    amount: "",
+    type: "owe_to" as const,
+    status: "pending" as const,
   });
 
   const totalToPay = debts
@@ -35,11 +35,14 @@ export const DebtTracker = () => {
     .filter(d => d.type === "owed_by" && d.status !== "paid")
     .reduce((acc, d) => acc + d.amount, 0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDebt.person || newDebt.amount <= 0) return;
-    addDebt(newDebt);
-    setNewDebt({ person: "", amount: 0, type: "owe_to", status: "pending" });
+    if (!newDebt.person || !newDebt.amount) return;
+    await addDebt({
+      ...newDebt,
+      amount: parseFloat(newDebt.amount),
+    });
+    setNewDebt({ person: "", amount: "", type: "owe_to", status: "pending" });
     setIsAdding(false);
   };
 
@@ -122,8 +125,8 @@ export const DebtTracker = () => {
                     type="number" 
                     placeholder="0.00" 
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-white/20"
-                    value={newDebt.amount || ""}
-                    onChange={e => setNewDebt({ ...newDebt, amount: Number(e.target.value) })}
+                    value={newDebt.amount}
+                    onChange={e => setNewDebt({ ...newDebt, amount: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
