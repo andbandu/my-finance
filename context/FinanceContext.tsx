@@ -133,6 +133,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     const formattedTransaction: Transaction = {
       ...newDbTransaction,
+      id: Number(newDbTransaction.id),
+      ledgerId: Number(newDbTransaction.ledgerId),
       amount: parseFloat(newDbTransaction.amount.toString()),
       type: newDbTransaction.type as TransactionType,
       date: newDbTransaction.date.toISOString()
@@ -156,6 +158,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     const formattedDebt: Debt = {
       ...newDbDebt,
+      id: Number(newDbDebt.id),
+      ledgerId: Number(newDbDebt.ledgerId),
       amount: parseFloat(newDbDebt.amount.toString()),
       type: newDbDebt.type as any,
       status: newDbDebt.status as any,

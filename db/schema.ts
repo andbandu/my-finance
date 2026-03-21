@@ -10,7 +10,7 @@ export const ledgers = pgTable("ledgers", {
 
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
-  ledgerId: integer("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }),
+  ledgerId: integer("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }).notNull(),
   type: text("type").notNull(), // "income" | "expense"
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   category: text("category").notNull(),
@@ -21,7 +21,7 @@ export const transactions = pgTable("transactions", {
 
 export const debts = pgTable("debts", {
   id: serial("id").primaryKey(),
-  ledgerId: integer("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }),
+  ledgerId: integer("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }).notNull(),
   person: text("person").notNull(),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   type: text("type").notNull(), // "owe_to" | "owed_by"
