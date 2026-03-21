@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useFinance, Budget } from "@/context/FinanceContext";
 import { Card, Button } from "@/components/ui";
+import { formatCurrency } from "@/lib/utils";
 import { 
   Plus, 
   Target, 
@@ -139,7 +140,7 @@ export const BudgetsView = () => {
                 
                 <div className="mb-8">
                   <h4 className="text-xl font-bold text-white tracking-tight mb-1">{budget.category}</h4>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Monthly Limit: ${budget.limit}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Monthly Limit: {formatCurrency(budget.limit)}</p>
                 </div>
 
                 <div className="space-y-4">
@@ -147,7 +148,7 @@ export const BudgetsView = () => {
                     <div>
                       <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Spent this month</p>
                       <p className={cn("text-2xl font-bold tracking-tighter", isOver ? "text-rose-400" : "text-white")}>
-                        ${currentSpent.toFixed(2)}
+                        {formatCurrency(currentSpent)}
                       </p>
                     </div>
                     <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{Math.round(percent)}%</p>
@@ -168,9 +169,9 @@ export const BudgetsView = () => {
                 <div className="mt-8 pt-8 border-t border-white/5">
                   <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">
                     {isOver ? (
-                      <span className="text-rose-400">Exceeded by ${(currentSpent - budget.limit).toFixed(2)}</span>
+                      <span className="text-rose-400">Exceeded by {formatCurrency(currentSpent - budget.limit)}</span>
                     ) : (
-                      <span>${(budget.limit - currentSpent).toFixed(2)} Available</span>
+                      <span>{formatCurrency(budget.limit - currentSpent)} Available</span>
                     )}
                   </p>
                 </div>
@@ -230,11 +231,11 @@ export const BudgetsView = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest pl-1">Monthly Limit ($)</label>
+                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest pl-1">Monthly Limit (LKR)</label>
                     <input 
                       required
                       type="number"
-                      placeholder="500.00" 
+                      placeholder="100,000.00" 
                       className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:ring-1 focus:ring-white/20"
                       value={newBudget.limit}
                       onChange={e => setNewBudget({ ...newBudget, limit: e.target.value })}

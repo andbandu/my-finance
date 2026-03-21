@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useFinance, TransactionType } from "@/context/FinanceContext";
 import { Card, Button } from "@/components/ui";
-import { X, DollarSign, Tag, FileText, Calendar as CalendarIcon } from "lucide-react";
+import { X, Banknote, Tag, FileText, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -92,7 +92,7 @@ export const AddTransactionModal = ({ isOpen, onClose }: { isOpen: boolean, onCl
                     <label className="text-[10px] uppercase tracking-widest text-white/30 font-bold px-1">Value Amount</label>
                     <div className="relative">
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20">
-                        <DollarSign size={18} />
+                        <Banknote size={18} />
                       </div>
                       <input
                         type="number"

@@ -355,14 +355,14 @@ export const DebtTracker = () => {
                         Maturity: {calculations.maturity.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                       </h4>
                       <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mt-1">
-                        Total {newDebt.inputMode === "principal" ? "Future Liability" : "Commitment"}: ${calculations.total.toFixed(2)}
+                        Total {newDebt.inputMode === "principal" ? "Future Liability" : "Commitment"}: {formatCurrency(calculations.total)}
                       </p>
                     </div>
                   </div>
                   {calculations.installment > 0 && (
                     <div className="text-right">
                       <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Scheduled Installment</p>
-                      <p className="text-3xl font-black text-white tracking-tighter">${calculations.installment.toFixed(2)}</p>
+                      <p className="text-3xl font-black text-white tracking-tighter">{formatCurrency(calculations.installment)}</p>
                     </div>
                   )}
                 </div>

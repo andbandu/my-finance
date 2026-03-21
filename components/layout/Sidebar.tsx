@@ -41,9 +41,11 @@ export const Sidebar = ({ activeTab, setActiveTab }: any) => {
     { id: "monthly", label: "Monthly", icon: Calendar },
     { id: "transactions", label: "Ledger", icon: Wallet },
     { id: "budgets", label: "Budgets", icon: Receipt },
-    { id: "debts", label: "Debts", icon: Users },
-    { id: "gold_loans", label: "Gold Loans", icon: Coins },
-    { id: "reports", label: "Insights", icon: FileText },
+    { id: "reports", label: "Insights", icon: FileText, category: "Insights" },
+    { id: "debts", label: "Debts", icon: Users, category: "Liabilities" },
+    { id: "gold_loans", label: "Gold Loans", icon: Coins, category: "Liabilities" },
+    { id: "gold_assets", label: "Gold", icon: Coins, category: "Assets" },
+    { id: "stock_assets", label: "Stocks", icon: Layers, category: "Assets" },
   ].filter(item => item.label.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
@@ -70,8 +72,9 @@ export const Sidebar = ({ activeTab, setActiveTab }: any) => {
         />
       </div>
 
-      <nav className="flex-1 space-y-1">
-        {filteredItems.map(item => (
+      <nav className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scrollbar">
+        {/* Main Sections */}
+        {filteredItems.filter(i => !i.category).map(item => (
           <NavItem 
             key={item.id}
             icon={item.icon} 
@@ -80,6 +83,48 @@ export const Sidebar = ({ activeTab, setActiveTab }: any) => {
             onClick={() => setActiveTab(item.id)} 
           />
         ))}
+
+        {/* Insights Section */}
+        <div className="pt-4 mb-2">
+          <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold px-4 mb-2">Analytics</p>
+          {filteredItems.filter(i => i.category === "Insights").map(item => (
+            <NavItem 
+              key={item.id}
+              icon={item.icon} 
+              label={item.label} 
+              active={activeTab === item.id} 
+              onClick={() => setActiveTab(item.id)} 
+            />
+          ))}
+        </div>
+
+        {/* Assets Section */}
+        <div className="pt-2 mb-2">
+          <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold px-4 mb-2">Assets</p>
+          {filteredItems.filter(i => i.category === "Assets").map(item => (
+            <NavItem 
+              key={item.id}
+              icon={item.icon} 
+              label={item.label} 
+              active={activeTab === item.id} 
+              onClick={() => setActiveTab(item.id)} 
+            />
+          ))}
+        </div>
+
+        {/* Liabilities Section */}
+        <div className="pt-2 mb-2">
+          <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold px-4 mb-2">Liabilities</p>
+          {filteredItems.filter(i => i.category === "Liabilities").map(item => (
+            <NavItem 
+              key={item.id}
+              icon={item.icon} 
+              label={item.label} 
+              active={activeTab === item.id} 
+              onClick={() => setActiveTab(item.id)} 
+            />
+          ))}
+        </div>
       </nav>
 
       <div className="mt-auto pt-8 border-t border-white/5">

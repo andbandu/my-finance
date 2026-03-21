@@ -5,6 +5,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { DebtTracker } from "@/components/debt/DebtTracker";
 import { GoldLoanTracker } from "@/components/debt/GoldLoanTracker";
+import { GoldAssets } from "@/components/assets/GoldAssets";
+import { StockAssets } from "@/components/assets/StockAssets";
 import { Reports } from "@/components/reports/Reports";
 
 import { TransactionsView } from "@/components/dashboard/TransactionsView";
@@ -22,6 +24,8 @@ export default function Home() {
         {activeTab === "dashboard" && <Dashboard />}
         {activeTab === "debts" && <DebtTracker />}
         {activeTab === "gold_loans" && <GoldLoanTracker />}
+        {activeTab === "gold_assets" && <GoldAssets />}
+        {activeTab === "stock_assets" && <StockAssets />}
         {activeTab === "reports" && <Reports />}
         {activeTab === "transactions" && <TransactionsView />}
         {activeTab === "budgets" && <BudgetsView />}

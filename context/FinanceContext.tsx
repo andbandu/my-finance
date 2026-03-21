@@ -5,7 +5,9 @@ import {
   getLedgers, addLedger as dbAddLedger, deleteLedger as dbDeleteLedger,
   getTransactions, addTransaction as dbAddTransaction, deleteTransaction as dbDeleteTransaction,
   getDebts, addDebt as dbAddDebt, deleteDebt as dbDeleteDebt, updateDebtStatus as dbUpdateDebtStatus,
-  getBudgets, addBudget as dbAddBudget, deleteBudget as dbDeleteBudget
+  getBudgets, addBudget as dbAddBudget, deleteBudget as dbDeleteBudget,
+  getAssets, addAsset as dbAddAsset, deleteAsset as dbDeleteAsset, updateAssetPrice as dbUpdateAssetPrice,
+  updateLedgerGoldPrice as dbUpdateGoldPrice
 } from "@/app/actions/finance";
 
 export type TransactionType = "income" | "expense";
@@ -43,6 +45,7 @@ export interface Ledger {
   name: string;
   description: string;
   color: string;
+  goldPrice24k?: number;
 }
 
 export interface Budget {
@@ -54,12 +57,25 @@ export interface Budget {
   color: string;
 }
 
+export interface Asset {
+  id: number;
+  ledgerId: number;
+  type: "gold" | "stock";
+  name: string;
+  quantity: number;
+  purchasePrice: number;
+  currentPrice: number;
+  purity?: number;
+  date: string;
+}
+
 interface FinanceContextType {
   ledgers: Ledger[];
   currentLedgerId: number | null;
   transactions: Transaction[];
   debts: Debt[];
   budgets: Budget[];
+  assets: Asset[];
   setCurrentLedgerId: (id: number) => void;
   addLedger: (ledger: Omit<Ledger, "id">) => Promise<void>;
   removeLedger: (id: number) => Promise<void>;
@@ -70,6 +86,10 @@ interface FinanceContextType {
   updateDebtStatus: (id: number, status: Debt["status"]) => Promise<void>;
   addBudget: (budget: Omit<Budget, "id" | "ledgerId">) => Promise<void>;
   removeBudget: (id: number) => Promise<void>;
+  addAsset: (asset: Omit<Asset, "id" | "ledgerId">) => Promise<void>;
+  removeAsset: (id: number) => Promise<void>;
+  updateAssetPrice: (id: number, price: number) => Promise<void>;
+  updateGoldPrice: (price24k: number) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -80,6 +100,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -89,7 +110,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         id: l.id,
         name: l.name,
         description: l.description || "", 
-        color: l.color || "#3b82f6" 
+        color: l.color || "#3b82f6",
+        goldPrice24k: l.goldPrice24k ? parseFloat(l.goldPrice24k.toString()) : 0
       }));
       setLedgers(castLedgers);
       
@@ -104,10 +126,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (currentLedgerId) {
       const fetchData = async () => {
-        const [dbTransactions, dbDebts, dbBudgets] = await Promise.all([
+        const [dbTransactions, dbDebts, dbBudgets, dbAssets] = await Promise.all([
           getTransactions(currentLedgerId),
           getDebts(currentLedgerId),
-          getBudgets(currentLedgerId)
+          getBudgets(currentLedgerId),
+          getAssets(currentLedgerId)
         ]);
         
         setTransactions(dbTransactions.map((t: any) => ({
@@ -137,6 +160,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           ...b,
           limit: parseFloat(b.limit.toString())
         })));
+
+        setAssets(dbAssets.map((a: any) => ({
+          ...a,
+          type: a.type as "gold" | "stock",
+          quantity: parseFloat(a.quantity.toString()),
+          purchasePrice: parseFloat(a.purchasePrice?.toString() || "0"),
+          currentPrice: parseFloat(a.currentPrice?.toString() || "0"),
+          purity: a.purity ? parseFloat(a.purity.toString()) : undefined,
+          date: a.date?.toISOString()
+        })));
       };
       fetchData();
     }
@@ -144,7 +177,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addLedger = async (ledger: Omit<Ledger, "id">) => {
     const newDbLedger = await dbAddLedger(ledger);
-    const newLedger = { ...newDbLedger, description: newDbLedger.description || "", color: newDbLedger.color || "#3b82f6" };
+    const newLedger: Ledger = { 
+      ...newDbLedger, 
+      description: newDbLedger.description || "", 
+      color: newDbLedger.color || "#3b82f6",
+      goldPrice24k: newDbLedger.goldPrice24k ? parseFloat(newDbLedger.goldPrice24k.toString()) : 0
+    };
     setLedgers([newLedger, ...ledgers]);
     setCurrentLedgerId(newLedger.id);
   };
@@ -239,6 +277,34 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setBudgets(budgets.filter((b) => b.id !== id));
   };
 
+  const addAsset = async (asset: Omit<Asset, "id" | "ledgerId">) => {
+    if (!currentLedgerId) return;
+    const newDbAsset = await dbAddAsset({
+      ...asset,
+      ledgerId: currentLedgerId
+    });
+    
+    setAssets([{
+      ...newDbAsset,
+      type: newDbAsset.type as "gold" | "stock",
+      quantity: parseFloat(newDbAsset.quantity.toString()),
+      purchasePrice: parseFloat(newDbAsset.purchasePrice?.toString() || "0"),
+      currentPrice: parseFloat(newDbAsset.currentPrice?.toString() || "0"),
+      purity: newDbAsset.purity ? parseFloat(newDbAsset.purity.toString()) : undefined,
+      date: newDbAsset.date?.toISOString() || new Date().toISOString()
+    }, ...assets]);
+  };
+
+  const removeAsset = async (id: number) => {
+    await dbDeleteAsset(id);
+    setAssets(assets.filter((a) => a.id !== id));
+  };
+
+  const updateAssetPrice = async (id: number, price: number) => {
+    await dbUpdateAssetPrice(id, price);
+    setAssets(assets.map((a) => (a.id === id ? { ...a, currentPrice: price } : a)));
+  };
+
   return (
     <FinanceContext.Provider
       value={{
@@ -247,6 +313,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         transactions: transactions.filter((t) => t.ledgerId === currentLedgerId),
         debts: debts.filter((d) => d.ledgerId === currentLedgerId),
         budgets: budgets.filter((b) => b.ledgerId === currentLedgerId),
+        assets: assets.filter((a) => a.ledgerId === currentLedgerId),
         setCurrentLedgerId,
         addLedger,
         removeLedger,
@@ -257,6 +324,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateDebtStatus,
         addBudget,
         removeBudget,
+        addAsset,
+        removeAsset,
+        updateAssetPrice,
+        updateGoldPrice: async (price24k: number) => {
+          if (!currentLedgerId) return;
+          await dbUpdateGoldPrice(currentLedgerId, price24k);
+          setLedgers(prev => prev.map(l => 
+            l.id === currentLedgerId ? { ...l, goldPrice24k: price24k } : l
+          ));
+        }
       }}
     >
       {children}

@@ -100,7 +100,7 @@ export const UpcomingInstallments = () => {
                       )}
                     </div>
                     <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">
-                      {ob.paidThisMonth ? "Settled for March" : (ob.isGoldLoan ? "Get Out Target" : "Monthly Installment")}
+                      {ob.paidThisMonth ? `Settled for ${new Date().toLocaleString('default', { month: 'long' })}` : (ob.isGoldLoan ? "Get Out Target" : "Monthly Installment")}
                     </p>
                   </div>
                 </div>

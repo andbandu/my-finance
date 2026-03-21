@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { ledgers, transactions, debts, budgets } from "@/db/schema";
+import { ledgers, transactions, debts, budgets, assets } from "@/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -19,6 +19,11 @@ export async function addLedger(data: { name: string; description?: string; colo
 
 export async function deleteLedger(id: number) {
   await db.delete(ledgers).where(eq(ledgers.id, id));
+  revalidatePath("/");
+}
+
+export async function updateLedgerGoldPrice(ledgerId: number, price24k: number) {
+  await db.update(ledgers).set({ goldPrice24k: price24k.toString() }).where(eq(ledgers.id, ledgerId));
   revalidatePath("/");
 }
 
@@ -141,5 +146,46 @@ export async function addBudget(data: {
 
 export async function deleteBudget(id: number) {
   await db.delete(budgets).where(eq(budgets.id, id));
+  revalidatePath("/");
+}
+
+// --- Assets ---
+
+export async function getAssets(ledgerId: number) {
+  return await db.select()
+    .from(assets)
+    .where(eq(assets.ledgerId, ledgerId))
+    .orderBy(desc(assets.createdAt));
+}
+
+export async function addAsset(data: {
+  ledgerId: number;
+  type: string;
+  name: string;
+  quantity: any;
+  purchasePrice?: any;
+  currentPrice?: any;
+  purity?: any;
+  date?: string;
+}) {
+  const result = await db.insert(assets).values({
+    ...data,
+    quantity: data.quantity.toString(),
+    purchasePrice: data.purchasePrice?.toString() || null,
+    currentPrice: data.currentPrice?.toString() || data.purchasePrice?.toString() || null,
+    purity: data.purity?.toString() || null,
+    date: data.date ? new Date(data.date) : new Date(),
+  }).returning();
+  revalidatePath("/");
+  return result[0];
+}
+
+export async function updateAssetPrice(id: number, currentPrice: any) {
+  await db.update(assets).set({ currentPrice: currentPrice.toString() }).where(eq(assets.id, id));
+  revalidatePath("/");
+}
+
+export async function deleteAsset(id: number) {
+  await db.delete(assets).where(eq(assets.id, id));
   revalidatePath("/");
 }

@@ -5,6 +5,7 @@ export const ledgers = pgTable("ledgers", {
   name: text("name").notNull(),
   description: text("description"),
   color: text("color").default("#3b82f6"),
+  goldPrice24k: numeric("gold_price_24k", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -44,5 +45,18 @@ export const budgets = pgTable("budgets", {
   limit: numeric("limit", { precision: 12, scale: 2 }).notNull(),
   icon: text("icon").notNull(),
   color: text("color").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const assets = pgTable("assets", {
+  id: serial("id").primaryKey(),
+  ledgerId: integer("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }).notNull(),
+  type: text("type").notNull(), // "gold" | "stock"
+  name: text("name").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 4 }).notNull(), // grams or shares
+  purchasePrice: numeric("purchase_price", { precision: 12, scale: 2 }),
+  currentPrice: numeric("current_price", { precision: 12, scale: 2 }),
+  purity: numeric("purity", { precision: 4, scale: 1 }), // Karats (e.g. 24.0, 22.0)
+  date: timestamp("date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
