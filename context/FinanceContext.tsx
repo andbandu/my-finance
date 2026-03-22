@@ -317,6 +317,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       type: result.type as "fixed" | "commodity",
       amount: parseFloat(result.amount.toString()),
       quantity: parseFloat(result.quantity?.toString() || "1"),
+      unit: result.unit || "unit",
+      targetDay: result.targetDay || undefined,
       createdAt: result.createdAt?.toISOString() || new Date().toISOString()
     }, ...allocations]);
   };
