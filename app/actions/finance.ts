@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { ledgers, transactions, debts, budgets, assets, allocations } from "@/db/schema";
+import { ledgers, transactions, debts, assets, allocations } from "@/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import fs from "fs";

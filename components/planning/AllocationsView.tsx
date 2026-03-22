@@ -121,7 +121,7 @@ export const AllocationsView = () => {
             <TrendingDown size={120} />
           </div>
           <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] mb-4">Minimum Monthly Capital Required</p>
-          <h3 className="text-6xl font-black text-white tracking-tighter mb-2 italic">
+          <h3 className="text-6xl font-black text-white tracking-tighter mb-2">
             {formatCurrency(totals.total)}
           </h3>
           <div className="flex gap-4 mt-6">
@@ -343,7 +343,7 @@ export const AllocationsView = () => {
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Category</label>
                       <select 
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20 transition-all appearance-none font-bold italic"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20 transition-all appearance-none font-bold"
                         value={newAllocation.category}
                         onChange={(e) => setNewAllocation({ ...newAllocation, category: e.target.value })}
                       >
