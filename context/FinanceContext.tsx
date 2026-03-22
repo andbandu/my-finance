@@ -5,8 +5,8 @@ import {
   getLedgers, addLedger as dbAddLedger, deleteLedger as dbDeleteLedger,
   getTransactions, addTransaction as dbAddTransaction, deleteTransaction as dbDeleteTransaction,
   getDebts, addDebt as dbAddDebt, deleteDebt as dbDeleteDebt, updateDebtStatus as dbUpdateDebtStatus,
-  getBudgets, addBudget as dbAddBudget, deleteBudget as dbDeleteBudget,
   getAssets, addAsset as dbAddAsset, deleteAsset as dbDeleteAsset, updateAssetPrice as dbUpdateAssetPrice,
+  getAllocations, addAllocation as dbAddAllocation, deleteAllocation as dbDeleteAllocation,
   updateLedgerGoldPrice as dbUpdateGoldPrice
 } from "@/app/actions/finance";
 
@@ -48,14 +48,6 @@ export interface Ledger {
   goldPrice24k?: number;
 }
 
-export interface Budget {
-  id: number;
-  ledgerId: number;
-  category: string;
-  limit: number;
-  icon: string;
-  color: string;
-}
 
 export interface Asset {
   id: number;
@@ -69,13 +61,26 @@ export interface Asset {
   date: string;
 }
 
+export interface Allocation {
+  id: number;
+  ledgerId: number;
+  name: string;
+  amount: number;
+  category: string;
+  type: "fixed" | "commodity";
+  quantity: number;
+  unit: string;
+  targetDay?: number;
+  createdAt: string;
+}
+
 interface FinanceContextType {
   ledgers: Ledger[];
   currentLedgerId: number | null;
   transactions: Transaction[];
   debts: Debt[];
-  budgets: Budget[];
   assets: Asset[];
+  allocations: Allocation[];
   setCurrentLedgerId: (id: number) => void;
   addLedger: (ledger: Omit<Ledger, "id">) => Promise<void>;
   removeLedger: (id: number) => Promise<void>;
@@ -84,10 +89,10 @@ interface FinanceContextType {
   addDebt: (debt: Omit<Debt, "id" | "ledgerId">) => Promise<void>;
   removeDebt: (id: number) => Promise<void>;
   updateDebtStatus: (id: number, status: Debt["status"]) => Promise<void>;
-  addBudget: (budget: Omit<Budget, "id" | "ledgerId">) => Promise<void>;
-  removeBudget: (id: number) => Promise<void>;
   addAsset: (asset: Omit<Asset, "id" | "ledgerId">) => Promise<void>;
   removeAsset: (id: number) => Promise<void>;
+  addAllocation: (allocation: Omit<Allocation, "id" | "ledgerId" | "createdAt">) => Promise<void>;
+  removeAllocation: (id: number) => Promise<void>;
   updateAssetPrice: (id: number, price: number) => Promise<void>;
   updateGoldPrice: (price24k: number) => Promise<void>;
 }
@@ -99,8 +104,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [currentLedgerId, setCurrentLedgerId] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [allocations, setAllocations] = useState<Allocation[]>([]);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -126,11 +131,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (currentLedgerId) {
       const fetchData = async () => {
-        const [dbTransactions, dbDebts, dbBudgets, dbAssets] = await Promise.all([
+        const [dbTransactions, dbDebts, dbAssets, dbAllocations] = await Promise.all([
           getTransactions(currentLedgerId),
           getDebts(currentLedgerId),
-          getBudgets(currentLedgerId),
-          getAssets(currentLedgerId)
+          getAssets(currentLedgerId),
+          getAllocations(currentLedgerId)
         ]);
         
         setTransactions(dbTransactions.map((t: any) => ({
@@ -156,10 +161,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           remainingPrincipal: parseFloat(d.remainingPrincipal?.toString() || "0"),
         })));
 
-        setBudgets(dbBudgets.map((b: any) => ({
-          ...b,
-          limit: parseFloat(b.limit.toString())
-        })));
 
         setAssets(dbAssets.map((a: any) => ({
           ...a,
@@ -169,6 +170,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           currentPrice: parseFloat(a.currentPrice?.toString() || "0"),
           purity: a.purity ? parseFloat(a.purity.toString()) : undefined,
           date: a.date?.toISOString()
+        })));
+
+        setAllocations(dbAllocations.map((al: any) => ({
+          ...al,
+          amount: parseFloat(al.amount.toString()),
+          quantity: parseFloat(al.quantity?.toString() || "1"),
+          unit: al.unit || "unit",
+          targetDay: al.targetDay || undefined,
+          createdAt: al.createdAt?.toISOString()
         })));
       };
       fetchData();
@@ -261,21 +271,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setDebts(debts.map((d) => (d.id === id ? { ...d, status } : d)));
   };
 
-  const addBudget = async (budget: Omit<Budget, "id" | "ledgerId">) => {
-    if (!currentLedgerId) return;
-    const newDbBudget = await dbAddBudget({
-      ...budget,
-      ledgerId: currentLedgerId,
-      limit: budget.limit.toString()
-    });
-    
-    setBudgets([{ ...newDbBudget, limit: parseFloat(newDbBudget.limit.toString()) }, ...budgets]);
-  };
-
-  const removeBudget = async (id: number) => {
-    await dbDeleteBudget(id);
-    setBudgets(budgets.filter((b) => b.id !== id));
-  };
 
   const addAsset = async (asset: Omit<Asset, "id" | "ledgerId">) => {
     if (!currentLedgerId) return;
@@ -305,6 +300,32 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setAssets(assets.map((a) => (a.id === id ? { ...a, currentPrice: price } : a)));
   };
 
+  const addAllocation = async (allocation: Omit<Allocation, "id" | "ledgerId" | "createdAt">) => {
+    if (!currentLedgerId) return;
+    const result = await dbAddAllocation({
+      ...allocation,
+      ledgerId: currentLedgerId
+    });
+    
+    if (result && "error" in result) {
+      console.error("Context allocation error:", result.error);
+      return;
+    }
+
+    setAllocations([{
+      ...result,
+      type: result.type as "fixed" | "commodity",
+      amount: parseFloat(result.amount.toString()),
+      quantity: parseFloat(result.quantity?.toString() || "1"),
+      createdAt: result.createdAt?.toISOString() || new Date().toISOString()
+    }, ...allocations]);
+  };
+
+  const removeAllocation = async (id: number) => {
+    await dbDeleteAllocation(id);
+    setAllocations(allocations.filter((a) => a.id !== id));
+  };
+
   return (
     <FinanceContext.Provider
       value={{
@@ -312,8 +333,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentLedgerId,
         transactions: transactions.filter((t) => t.ledgerId === currentLedgerId),
         debts: debts.filter((d) => d.ledgerId === currentLedgerId),
-        budgets: budgets.filter((b) => b.ledgerId === currentLedgerId),
         assets: assets.filter((a) => a.ledgerId === currentLedgerId),
+        allocations: allocations.filter((al) => al.ledgerId === currentLedgerId),
         setCurrentLedgerId,
         addLedger,
         removeLedger,
@@ -322,10 +343,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addDebt,
         removeDebt,
         updateDebtStatus,
-        addBudget,
-        removeBudget,
         addAsset,
         removeAsset,
+        addAllocation,
+        removeAllocation,
         updateAssetPrice,
         updateGoldPrice: async (price24k: number) => {
           if (!currentLedgerId) return;

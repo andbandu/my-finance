@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useFinance, Transaction } from "@/context/FinanceContext";
-import { Card, Button } from "@/components/ui";
+import { Card, Button, Badge } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 import { 
   ChevronLeft, 
@@ -13,13 +13,14 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   FileText,
-  Download
+  Download,
+  CheckCircle2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export const MonthlyView = () => {
-  const { transactions } = useFinance();
+  const { transactions, allocations } = useFinance();
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const monthNames = [
@@ -192,6 +193,59 @@ export const MonthlyView = () => {
           </Card>
         </motion.div>
       </motion.div>
+
+      {/* Planning Allocation Progress */}
+      {allocations.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mb-12"
+        >
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h4 className="text-2xl font-bold text-white tracking-tight">Requirement Fulfillment</h4>
+              <p className="text-xs text-white/30 font-medium font-mono uppercase tracking-widest mt-1">Allocation Coverage for {monthNames[selectedMonth]}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {allocations.map(al => {
+              const spent = monthlyTransactions
+                .filter(t => t.description.toLowerCase().includes(al.name.toLowerCase()) || t.category === al.category)
+                .reduce((acc, t) => acc + t.amount, 0);
+              const percent = Math.min((spent / (al.amount || 1)) * 100, 100);
+              const isFulfilled = spent >= al.amount;
+
+              return (
+                <Card key={al.id} className="p-6 bg-white/[0.01] border-white/5 relative overflow-hidden group">
+                  <div className="flex justify-between items-start mb-4">
+                    <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{al.name}</p>
+                    {isFulfilled ? 
+                      <Badge className="bg-emerald-500/10 text-emerald-500 border-0 text-[8px] font-black tracking-widest p-0 flex items-center gap-1">
+                        <CheckCircle2 size={10} /> FULFILLED
+                      </Badge> :
+                      <Badge className="bg-white/5 text-white/30 border-0 text-[8px] font-black tracking-widest p-0">
+                        {Math.round(percent)}%
+                      </Badge>
+                    }
+                  </div>
+                  <h5 className="text-lg font-bold text-white tracking-tight mb-4">{formatCurrency(al.amount)}</h5>
+                  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div 
+                      className={cn(
+                        "h-full transition-all duration-1000",
+                        isFulfilled ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-white/20"
+                      )} 
+                      style={{ width: `${percent}%` }} 
+                    />
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Cash In Breakdown */}

@@ -10,8 +10,8 @@ import { StockAssets } from "@/components/assets/StockAssets";
 import { Reports } from "@/components/reports/Reports";
 
 import { TransactionsView } from "@/components/dashboard/TransactionsView";
-import { BudgetsView } from "@/components/dashboard/BudgetsView";
 import { MonthlyView } from "@/components/dashboard/MonthlyView";
+import { AllocationsView } from "@/components/planning/AllocationsView";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -28,8 +28,8 @@ export default function Home() {
         {activeTab === "stock_assets" && <StockAssets />}
         {activeTab === "reports" && <Reports />}
         {activeTab === "transactions" && <TransactionsView />}
-        {activeTab === "budgets" && <BudgetsView />}
         {activeTab === "monthly" && <MonthlyView />}
+        {activeTab === "allocations" && <AllocationsView />}
       </div>
     </main>
   );

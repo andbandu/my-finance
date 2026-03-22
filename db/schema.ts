@@ -38,16 +38,6 @@ export const debts = pgTable("debts", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const budgets = pgTable("budgets", {
-  id: serial("id").primaryKey(),
-  ledgerId: integer("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }).notNull(),
-  category: text("category").notNull(),
-  limit: numeric("limit", { precision: 12, scale: 2 }).notNull(),
-  icon: text("icon").notNull(),
-  color: text("color").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
 export const assets = pgTable("assets", {
   id: serial("id").primaryKey(),
   ledgerId: integer("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }).notNull(),
@@ -58,5 +48,18 @@ export const assets = pgTable("assets", {
   currentPrice: numeric("current_price", { precision: 12, scale: 2 }),
   purity: numeric("purity", { precision: 4, scale: 1 }), // Karats (e.g. 24.0, 22.0)
   date: timestamp("date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const allocations = pgTable("allocations", {
+  id: serial("id").primaryKey(),
+  ledgerId: integer("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(), // estimated cost
+  category: text("category").notNull(),
+  type: text("type").notNull(), // "fixed" | "commodity"
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).default("1"),
+  unit: text("unit").default("unit"), // kg, pack, etc.
+  targetDay: integer("target_day"), // day of month for the obligation
   createdAt: timestamp("created_at").defaultNow(),
 });

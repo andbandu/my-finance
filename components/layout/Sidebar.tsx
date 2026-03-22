@@ -39,8 +39,8 @@ export const Sidebar = ({ activeTab, setActiveTab }: any) => {
   const filteredItems = [
     { id: "dashboard", label: "Overview", icon: LayoutDashboard },
     { id: "monthly", label: "Monthly", icon: Calendar },
+    { id: "allocations", label: "Allocations", icon: Receipt, category: "Planning" },
     { id: "transactions", label: "Ledger", icon: Wallet },
-    { id: "budgets", label: "Budgets", icon: Receipt },
     { id: "reports", label: "Insights", icon: FileText, category: "Insights" },
     { id: "debts", label: "Debts", icon: Users, category: "Liabilities" },
     { id: "gold_loans", label: "Gold Loans", icon: Coins, category: "Liabilities" },
@@ -83,6 +83,20 @@ export const Sidebar = ({ activeTab, setActiveTab }: any) => {
             onClick={() => setActiveTab(item.id)} 
           />
         ))}
+
+        {/* Planning Section */}
+        <div className="pt-4 mb-2">
+          <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold px-4 mb-2">Planning</p>
+          {filteredItems.filter(i => i.category === "Planning").map(item => (
+            <NavItem 
+              key={item.id}
+              icon={item.icon} 
+              label={item.label} 
+              active={activeTab === item.id} 
+              onClick={() => setActiveTab(item.id)} 
+            />
+          ))}
+        </div>
 
         {/* Insights Section */}
         <div className="pt-4 mb-2">

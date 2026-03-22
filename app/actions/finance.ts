@@ -1,9 +1,11 @@
 "use server";
 
 import { db } from "@/db";
-import { ledgers, transactions, debts, budgets, assets } from "@/db/schema";
+import { ledgers, transactions, debts, budgets, assets, allocations } from "@/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import fs from "fs";
+import path from "path";
 
 // --- Ledgers ---
 
@@ -123,32 +125,6 @@ export async function deleteDebt(id: number) {
   revalidatePath("/");
 }
 
-// --- Budgets ---
-
-export async function getBudgets(ledgerId: number) {
-  return await db.select()
-    .from(budgets)
-    .where(eq(budgets.ledgerId, ledgerId))
-    .orderBy(desc(budgets.createdAt));
-}
-
-export async function addBudget(data: {
-  ledgerId: number;
-  category: string;
-  limit: any;
-  icon: string;
-  color: string;
-}) {
-  const result = await db.insert(budgets).values(data).returning();
-  revalidatePath("/");
-  return result[0];
-}
-
-export async function deleteBudget(id: number) {
-  await db.delete(budgets).where(eq(budgets.id, id));
-  revalidatePath("/");
-}
-
 // --- Assets ---
 
 export async function getAssets(ledgerId: number) {
@@ -187,5 +163,45 @@ export async function updateAssetPrice(id: number, currentPrice: any) {
 
 export async function deleteAsset(id: number) {
   await db.delete(assets).where(eq(assets.id, id));
+  revalidatePath("/");
+}
+
+// --- Allocations ---
+
+export async function getAllocations(ledgerId: number) {
+  return await db.select()
+    .from(allocations)
+    .where(eq(allocations.ledgerId, ledgerId))
+    .orderBy(desc(allocations.createdAt));
+}
+
+export async function addAllocation(data: {
+  ledgerId: number;
+  name: string;
+  amount: any;
+  category: string;
+  type: string;
+  quantity?: any;
+  unit?: string;
+  targetDay?: number;
+}) {
+  try {
+    const result = await db.insert(allocations).values({
+      ...data,
+      amount: data.amount.toString(),
+      quantity: data.quantity ? data.quantity.toString() : "1",
+    }).returning();
+    revalidatePath("/");
+    return result[0];
+  } catch (e: any) {
+    const logPath = path.join(process.cwd(), "tmp", "error_log.txt");
+    fs.appendFileSync(logPath, `Allocation error: ${e.message}\n${e.stack}\n---\n`);
+    console.error("Allocation insertion error:", e);
+    return { error: e.message };
+  }
+}
+
+export async function deleteAllocation(id: number) {
+  await db.delete(allocations).where(eq(allocations.id, id));
   revalidatePath("/");
 }
