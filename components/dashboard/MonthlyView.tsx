@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useFinance, Transaction } from "@/context/FinanceContext";
 import { Card, Button, Badge } from "@/components/ui";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -194,23 +194,18 @@ export const MonthlyView = () => {
         </motion.div>
       </motion.div>
 
-      {/* Planning Allocation Progress */}
-      {allocations.length > 0 && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mb-12"
-        >
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16">
+        {/* Requirement Fulfillment */}
+        <div className="lg:col-span-8">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h4 className="text-2xl font-bold text-white tracking-tight">Requirement Fulfillment</h4>
-              <p className="text-xs text-white/30 font-medium font-mono uppercase tracking-widest mt-1">Allocation Coverage for {monthNames[selectedMonth]}</p>
+              <p className="text-xs text-white/30 font-medium font-mono uppercase tracking-widest mt-1">Allocation Coverage</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {allocations.map(al => {
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {allocations.length > 0 ? allocations.map(al => {
               const spent = monthlyTransactions
                 .filter(t => t.description.toLowerCase().includes(al.name.toLowerCase()) || t.category === al.category)
                 .reduce((acc, t) => acc + t.amount, 0);
@@ -242,118 +237,99 @@ export const MonthlyView = () => {
                   </div>
                 </Card>
               );
-            })}
+            }) : (
+              <div className="col-span-2 py-12 text-center rounded-3xl border border-dashed border-white/5 opacity-10">
+                <p className="text-sm font-bold uppercase tracking-widest">No requirements defined</p>
+              </div>
+            )}
           </div>
-        </motion.div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Cash In Breakdown */}
-        <div>
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center justify-between mb-8"
-          >
-            <div>
-              <h4 className="text-2xl font-bold text-white tracking-tight">Categorized Income</h4>
-              <p className="text-xs text-white/30 font-medium font-mono uppercase tracking-widest mt-1">Cash In Breakdown</p>
-            </div>
-          </motion.div>
-
-          <AnimatePresence mode="popLayout">
-            <div className="grid grid-cols-1 gap-6">
-              {sortedIncomeCategories.length > 0 ? (
-                sortedIncomeCategories.map(([cat, amt], idx) => (
-                  <motion.div
-                    key={cat}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: idx * 0.05 }}
-                  >
-                    <Card className="group p-8 bg-white/[0.01] hover:bg-white/[0.03] border-white/[0.02] hover:border-white/[0.08] transition-all">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="p-3 rounded-2xl bg-white/[0.02] text-white/40 group-hover:text-emerald-400 transition-colors">
-                          <ArrowUpRight size={20} />
-                        </div>
-                        <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">{Math.round((amt / totalIncome) * 100)}% of Total</p>
-                      </div>
-                      <h5 className="text-sm font-bold text-white/40 uppercase tracking-widest mb-2">{cat}</h5>
-                      <p className="text-3xl font-bold text-white tracking-tight group-hover:text-emerald-400 transition-colors pr-10">{formatCurrency(amt)}</p>
-                      
-                      <div className="mt-8 h-1 bg-white/[0.02] rounded-full overflow-hidden">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(amt / totalIncome) * 100}%` }}
-                          className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
-                        />
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="py-20 text-center rounded-3xl border border-dashed border-white/5 opacity-10">
-                  <p className="text-sm font-bold uppercase tracking-widest">No income sources recorded</p>
-                </div>
-              )}
-            </div>
-          </AnimatePresence>
         </div>
 
-        {/* Cash Out Breakdown */}
-        <div>
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center justify-between mb-8"
-          >
-            <div>
-              <h4 className="text-2xl font-bold text-white tracking-tight">Categorized Expenses</h4>
-              <p className="text-xs text-white/30 font-medium font-mono uppercase tracking-widest mt-1">Cash Out Breakdown</p>
-            </div>
-          </motion.div>
-
-          <AnimatePresence mode="popLayout">
-            <div className="grid grid-cols-1 gap-6">
-              {sortedExpenseCategories.length > 0 ? (
-                sortedExpenseCategories.map(([cat, amt], idx) => (
-                  <motion.div
-                    key={cat}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: idx * 0.05 }}
-                  >
-                    <Card className="group p-8 bg-white/[0.01] hover:bg-white/[0.03] border-white/[0.02] hover:border-white/[0.08] transition-all">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="p-3 rounded-2xl bg-white/[0.02] text-white/40 group-hover:text-violet-400 transition-colors">
-                          <ArrowDownRight size={20} />
-                        </div>
-                        <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]">{Math.round((amt / totalExpenses) * 100)}% of Total</p>
-                      </div>
-                      <h5 className="text-sm font-bold text-white/40 uppercase tracking-widest mb-2">{cat}</h5>
-                      <p className="text-3xl font-bold text-white tracking-tight group-hover:text-violet-400 transition-colors pr-10">{formatCurrency(amt)}</p>
-                      
-                      <div className="mt-8 h-1 bg-white/[0.02] rounded-full overflow-hidden">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(amt / totalExpenses) * 100}%` }}
-                          className="h-full bg-violet-600 shadow-[0_0_10px_rgba(139,92,246,0.3)]"
-                        />
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="py-20 text-center rounded-3xl border border-dashed border-white/5 opacity-10">
-                  <p className="text-sm font-bold uppercase tracking-widest">No expenses recorded</p>
+        {/* Categorized Small Cards */}
+        <div className="lg:col-span-4">
+          <h4 className="text-2xl font-bold text-white tracking-tight mb-8">Categorized flow</h4>
+          <div className="space-y-4">
+            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest px-1">Income sources</p>
+            {sortedIncomeCategories.length > 0 ? sortedIncomeCategories.map(([cat, amt]) => (
+              <div key={cat} className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl flex justify-between items-center group hover:bg-white/[0.03] transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                    <ArrowUpRight size={14} />
+                  </div>
+                  <span className="text-xs text-white/60 font-bold uppercase tracking-tight">{cat}</span>
                 </div>
-              )}
+                <span className="text-sm font-bold text-white">{formatCurrency(amt)}</span>
+              </div>
+            )) : (
+              <p className="text-[10px] text-white/10 uppercase font-black px-1">None</p>
+            )}
+
+            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest px-1 pt-4">Expense Categories</p>
+            {sortedExpenseCategories.length > 0 ? sortedExpenseCategories.map(([cat, amt]) => (
+              <div key={cat} className="p-5 bg-white/[0.01] border border-white/5 rounded-2xl flex justify-between items-center group hover:bg-white/[0.03] transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center">
+                    <ArrowDownRight size={14} />
+                  </div>
+                  <span className="text-xs text-white/60 font-bold uppercase tracking-tight">{cat}</span>
+                </div>
+                <span className="text-sm font-bold text-white">{formatCurrency(amt)}</span>
+              </div>
+            )) : (
+              <p className="text-[10px] text-white/10 uppercase font-black px-1">None</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Transaction List */}
+      <div>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h4 className="text-2xl font-bold text-white tracking-tight">Ledger entries</h4>
+            <p className="text-xs text-white/30 font-medium font-mono uppercase tracking-widest mt-1">Individual monthly movement</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {monthlyTransactions.length > 0 ? (
+            monthlyTransactions.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((t, idx) => (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.01 }}
+                className="group flex items-center justify-between p-4 rounded-xl bg-white/[0.01] hover:bg-white/[0.02] border border-white/[0.02] transition-all"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    t.type === "income" ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+                  )}>
+                    {t.type === "income" ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                  </div>
+                  <div>
+                    <p className="font-bold text-white text-sm tracking-tight">{t.description}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{t.category}</span>
+                      <span className="w-1 h-1 rounded-full bg-white/10" />
+                      <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{formatDate(t.date)}</span>
+                    </div>
+                  </div>
+                </div>
+                <p className={cn(
+                  "text-base font-bold tracking-tighter",
+                  t.type === "income" ? "text-emerald-400" : "text-white"
+                )}>
+                  {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount)}
+                </p>
+              </motion.div>
+            ))
+          ) : (
+            <div className="py-20 text-center rounded-3xl border border-dashed border-white/5 opacity-10">
+              <p className="text-sm font-bold uppercase tracking-widest">No entries for this period</p>
             </div>
-          </AnimatePresence>
+          )}
         </div>
       </div>
     </div>

@@ -138,6 +138,7 @@ export async function addAsset(data: {
   ledgerId: number;
   type: string;
   name: string;
+  ticker?: string;
   quantity: any;
   purchasePrice?: any;
   currentPrice?: any;
@@ -158,6 +159,14 @@ export async function addAsset(data: {
 
 export async function updateAssetPrice(id: number, currentPrice: any) {
   await db.update(assets).set({ currentPrice: currentPrice.toString() }).where(eq(assets.id, id));
+  revalidatePath("/");
+}
+
+export async function updateAssetPosition(id: number, quantity: any, purchasePrice: any) {
+  await db.update(assets).set({ 
+    quantity: quantity.toString(),
+    purchasePrice: purchasePrice.toString()
+  }).where(eq(assets.id, id));
   revalidatePath("/");
 }
 

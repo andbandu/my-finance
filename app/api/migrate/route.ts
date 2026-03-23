@@ -21,7 +21,11 @@ export async function GET() {
       );
     `);
     
-    return NextResponse.json({ success: true, message: "Allocations table ensured." });
+    await sql(`
+      ALTER TABLE assets ADD COLUMN IF NOT EXISTS ticker TEXT;
+    `);
+
+    return NextResponse.json({ success: true, message: "Migration completed." });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }

@@ -17,6 +17,178 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Edit3, Check, X, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+
+const UpdatePriceButton = ({ id, currentPrice }: { id: number, currentPrice: number }) => {
+  const { updateAssetPrice } = useFinance();
+  const [isEditing, setIsEditing] = useState(false);
+  const [price, setPrice] = useState(currentPrice.toString());
+
+  if (!isEditing) {
+    return (
+      <button 
+        onClick={() => setIsEditing(true)}
+        className="text-[9px] font-bold text-violet-400/60 hover:text-violet-400 uppercase tracking-[0.15em] flex items-center gap-1 mt-1 transition-colors"
+      >
+        <Edit3 size={10} /> Update Price
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1 mt-1">
+      <input 
+        autoFocus
+        value={price}
+        onChange={(e) => setPrice(e.target.value)}
+        className="w-16 bg-white/5 border border-white/10 rounded-md px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+      />
+      <button 
+        onClick={async () => {
+          await updateAssetPrice(id, parseFloat(price));
+          setIsEditing(false);
+        }}
+        className="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all"
+      >
+        <Check size={10} />
+      </button>
+      <button 
+        onClick={() => setIsEditing(false)}
+        className="w-5 h-5 rounded-md bg-white/5 text-white/40 flex items-center justify-center hover:bg-white/10 transition-all"
+      >
+        <X size={10} />
+      </button>
+    </div>
+  );
+};
+
+const PositionManager = ({ asset }: { asset: Asset }) => {
+  const { adjustAssetPosition } = useFinance();
+  const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<"buy" | "sell">("buy");
+  const [qty, setQty] = useState("");
+  const [price, setPrice] = useState(asset.currentPrice.toString());
+
+  const handleAdjust = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = parseFloat(qty);
+    if (isNaN(q) || q <= 0) return;
+    
+    await adjustAssetPosition(asset.id, mode === "buy" ? q : -q, parseFloat(price));
+    setIsOpen(false);
+    setQty("");
+  };
+
+  return (
+    <>
+      <button 
+        onClick={() => setIsOpen(true)}
+        className="w-10 h-10 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center hover:bg-violet-600 hover:text-white transition-all"
+        title="Manage position"
+      >
+        <BarChart4 size={14} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-[#0D0D0D] border border-white/10 rounded-[28px] overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-400 flex items-center justify-center">
+                    <Briefcase size={14} />
+                  </div>
+                  <h3 className="font-bold text-white tracking-tight uppercase">{asset.ticker} Position</h3>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <div className="flex bg-white/5 p-1 rounded-xl mb-6">
+                  <button 
+                    onClick={() => setMode("buy")}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                      mode === "buy" ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "text-white/20 hover:text-white/40"
+                    )}
+                  >
+                    <ArrowUpCircle size={14} /> Buy More
+                  </button>
+                  <button 
+                    onClick={() => setMode("sell")}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                      mode === "sell" ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20" : "text-white/20 hover:text-white/40"
+                    )}
+                  >
+                    <ArrowDownCircle size={14} /> Sell Partial
+                  </button>
+                </div>
+
+                <form onSubmit={handleAdjust} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">Quantity (Shares)</label>
+                    <input 
+                      type="number" step="0.0001"
+                      autoFocus
+                      placeholder="0.00"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                      value={qty}
+                      onChange={(e) => setQty(e.target.value)}
+                    />
+                  </div>
+                  
+                  {mode === "buy" && (
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">Purchase Price</label>
+                      <input 
+                        type="number" step="0.01"
+                        placeholder="0.00"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  <div className="pt-4 flex gap-3">
+                    <Button 
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="flex-1 h-12 bg-white/5 border-0 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit"
+                      className={cn(
+                        "flex-[2] h-12 border-0 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl",
+                        mode === "buy" ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20" : "bg-rose-600 hover:bg-rose-700 shadow-rose-500/20"
+                      )}
+                    >
+                      Process Transaction
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
 
 export const StockAssets = () => {
   const { assets, addAsset, removeAsset, updateAssetPrice } = useFinance();
@@ -24,6 +196,7 @@ export const StockAssets = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [newAsset, setNewAsset] = useState({
     name: "",
+    ticker: "",
     quantity: "", // Shares
     purchasePrice: "",
     currentPrice: "",
@@ -41,7 +214,8 @@ export const StockAssets = () => {
 
   const stockAssets = assets.filter(a => 
     a.type === "stock" && 
-    (a.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    (a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+     a.ticker?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const stats = useMemo(() => {
@@ -54,10 +228,11 @@ export const StockAssets = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAsset.name || !newAsset.quantity) return;
+    if (!newAsset.name || !newAsset.ticker || !newAsset.quantity) return;
     
     await addAsset({
-      name: newAsset.name.toUpperCase(),
+      name: newAsset.name,
+      ticker: newAsset.ticker.toUpperCase(),
       quantity: parseFloat(newAsset.quantity),
       purchasePrice: parseFloat(newAsset.purchasePrice) || 0,
       currentPrice: parseFloat(newAsset.currentPrice) || parseFloat(newAsset.purchasePrice) || 0,
@@ -65,8 +240,8 @@ export const StockAssets = () => {
       date: new Date().toISOString()
     });
     
-    setSuccessToast(`${newAsset.name.toUpperCase()} added to portfolio`);
-    setNewAsset({ name: "", quantity: "", purchasePrice: "", currentPrice: "", type: "stock" });
+    setSuccessToast(`${newAsset.ticker.toUpperCase()} added to portfolio`);
+    setNewAsset({ name: "", ticker: "", quantity: "", purchasePrice: "", currentPrice: "", type: "stock" });
     setIsAdding(false);
   };
 
@@ -165,13 +340,13 @@ export const StockAssets = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-white/[0.02] border-b border-white/5">
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Ticker / Name</th>
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Quantity</th>
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Avg Cost</th>
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Current Price</th>
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Market Value</th>
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Total G/L</th>
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Actions</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Equity / Listing</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Quantity</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Avg Cost</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Price</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">G/L</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Position</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -182,50 +357,62 @@ export const StockAssets = () => {
                 const glPercent = costBasis > 0 ? (gl / costBasis) * 100 : 0;
 
                 return (
-                  <tr key={asset.id} className="hover:bg-white/[0.02] transition-colors group">
+                  <tr key={asset.id} className="hover:bg-white/[0.01] transition-colors group">
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-[14px] bg-violet-500/10 text-violet-400 flex items-center justify-center font-black text-xs">
-                          {asset.name.substring(0, 2)}
+                        <div className="w-10 h-10 rounded-[14px] bg-white/[0.02] border border-white/5 text-white/40 flex items-center justify-center font-black text-xs uppercase">
+                          {asset.ticker?.substring(0, 2) || "??"}
                         </div>
                         <div>
-                          <p className="text-sm font-black text-white tracking-tight">{asset.name}</p>
-                          <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-none mt-1">Common Stock</p>
+                          <p className="text-sm font-black text-white tracking-tight uppercase">{asset.ticker}</p>
+                          <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-none mt-1 truncate max-w-[120px]">{asset.name}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6 text-sm font-bold text-white/60">{asset.quantity.toLocaleString()} Shares</td>
-                    <td className="px-8 py-6 text-sm font-bold text-white/60">{formatCurrency(asset.purchasePrice)}</td>
-                    <td className="px-8 py-6 text-sm font-black text-white">{formatCurrency(asset.currentPrice)}</td>
                     <td className="px-8 py-6">
-                      <p className="text-sm font-black text-white">{formatCurrency(marketValue)}</p>
+                      <p className="text-sm font-bold text-white tracking-tighter">{asset.quantity.toLocaleString()}</p>
+                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Shares Held</p>
                     </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="text-right">
-                          <p className={cn(
-                            "text-sm font-black",
-                            gl >= 0 ? "text-emerald-400" : "text-rose-400"
-                          )}>
-                            {gl >= 0 ? "+" : ""}{formatCurrency(gl)}
-                          </p>
-                          <p className={cn(
-                            "text-[10px] font-bold",
-                            gl >= 0 ? "text-emerald-500/40" : "text-rose-500/40"
-                          )}>
-                            {gl >= 0 ? "+" : ""}{glPercent.toFixed(2)}%
-                          </p>
-                        </div>
-                        {gl >= 0 ? <ArrowUpRight className="text-emerald-500/20" size={16} /> : <ArrowDownRight className="text-rose-500/20" size={16} />}
+                    <td className="px-8 py-6">
+                      <p className="text-sm font-bold text-white/40 tracking-tighter">{formatCurrency(asset.purchasePrice)}</p>
+                    </td>
+                    <td className="px-8 py-6">
+                      <p className="text-sm font-black text-white tracking-tighter">{formatCurrency(asset.currentPrice)}</p>
+                      <UpdatePriceButton id={asset.id} currentPrice={asset.currentPrice} />
+                    </td>
+                    <td className="px-8 py-6">
+                      <div className="flex flex-col">
+                        <p className={cn(
+                          "text-sm font-black tracking-tighter",
+                          gl >= 0 ? "text-emerald-400" : "text-rose-400"
+                        )}>
+                          {gl >= 0 ? "+" : ""}{formatCurrency(gl)}
+                        </p>
+                        <p className={cn(
+                          "text-[9px] font-black uppercase tracking-widest mt-0.5",
+                          gl >= 0 ? "text-emerald-500/30" : "text-rose-500/30"
+                        )}>
+                          {gl >= 0 ? "+" : ""}{glPercent.toFixed(2)}%
+                        </p>
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                      <button 
-                        onClick={() => removeAsset(asset.id)}
-                        className="w-8 h-8 rounded-xl bg-white/5 text-white/20 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex flex-col">
+                        <p className="text-sm font-black text-white tracking-tighter">{formatCurrency(marketValue)}</p>
+                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Net Valuation</p>
+                      </div>
+                    </td>
+                    <td className="px-8 py-6">
+                      <div className="flex items-center justify-center gap-2">
+                        <PositionManager asset={asset} />
+                        <button 
+                          onClick={() => removeAsset(asset.id)}
+                          className="w-10 h-10 rounded-xl bg-white/5 text-white/20 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
+                          title="Remove holding"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -278,15 +465,26 @@ export const StockAssets = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Ticker Symbol / Name</label>
-                  <input 
-                    autoFocus
-                    placeholder="e.g., AAPL or APPLE INC"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all placeholder:uppercase"
-                    value={newAsset.name}
-                    onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Ticker Symbol</label>
+                    <input 
+                      autoFocus
+                      placeholder="e.g., AAPL"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all placeholder:uppercase"
+                      value={newAsset.ticker}
+                      onChange={(e) => setNewAsset({ ...newAsset, ticker: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Full Company Name</label>
+                    <input 
+                      placeholder="e.g., Apple Inc"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                      value={newAsset.name}
+                      onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

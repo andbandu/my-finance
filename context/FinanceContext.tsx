@@ -6,6 +6,7 @@ import {
   getTransactions, addTransaction as dbAddTransaction, deleteTransaction as dbDeleteTransaction,
   getDebts, addDebt as dbAddDebt, deleteDebt as dbDeleteDebt, updateDebtStatus as dbUpdateDebtStatus,
   getAssets, addAsset as dbAddAsset, deleteAsset as dbDeleteAsset, updateAssetPrice as dbUpdateAssetPrice,
+  updateAssetPosition as dbUpdateAssetPosition,
   getAllocations, addAllocation as dbAddAllocation, deleteAllocation as dbDeleteAllocation,
   updateLedgerGoldPrice as dbUpdateGoldPrice
 } from "@/app/actions/finance";
@@ -54,6 +55,7 @@ export interface Asset {
   ledgerId: number;
   type: "gold" | "stock";
   name: string;
+  ticker?: string | null; // Ticker symbol for stocks
   quantity: number;
   purchasePrice: number;
   currentPrice: number;
@@ -94,6 +96,7 @@ interface FinanceContextType {
   addAllocation: (allocation: Omit<Allocation, "id" | "ledgerId" | "createdAt">) => Promise<void>;
   removeAllocation: (id: number) => Promise<void>;
   updateAssetPrice: (id: number, price: number) => Promise<void>;
+  adjustAssetPosition: (id: number, quantityChange: number, price: number) => Promise<void>;
   updateGoldPrice: (price24k: number) => Promise<void>;
 }
 
@@ -165,6 +168,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setAssets(dbAssets.map((a: any) => ({
           ...a,
           type: a.type as "gold" | "stock",
+          ticker: a.ticker || undefined,
           quantity: parseFloat(a.quantity.toString()),
           purchasePrice: parseFloat(a.purchasePrice?.toString() || "0"),
           currentPrice: parseFloat(a.currentPrice?.toString() || "0"),
@@ -282,6 +286,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setAssets([{
       ...newDbAsset,
       type: newDbAsset.type as "gold" | "stock",
+      ticker: newDbAsset.ticker || undefined,
       quantity: parseFloat(newDbAsset.quantity.toString()),
       purchasePrice: parseFloat(newDbAsset.purchasePrice?.toString() || "0"),
       currentPrice: parseFloat(newDbAsset.currentPrice?.toString() || "0"),
@@ -298,6 +303,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const updateAssetPrice = async (id: number, price: number) => {
     await dbUpdateAssetPrice(id, price);
     setAssets(assets.map((a) => (a.id === id ? { ...a, currentPrice: price } : a)));
+  };
+
+  const adjustAssetPosition = async (id: number, quantityChange: number, price: number) => {
+    const asset = assets.find(a => a.id === id);
+    if (!asset) return;
+
+    let newQuantity = asset.quantity + quantityChange;
+    if (newQuantity < 0) newQuantity = 0;
+
+    let newAvgCost = asset.purchasePrice;
+    if (quantityChange > 0) {
+      // Re-buying: Recalculate average cost
+      newAvgCost = ((asset.quantity * asset.purchasePrice) + (quantityChange * price)) / (asset.quantity + quantityChange);
+    }
+    // For selling (quantityChange < 0), avg cost stays the same
+
+    await dbUpdateAssetPosition(id, newQuantity, newAvgCost);
+    setAssets(assets.map((a) => (a.id === id ? { ...a, quantity: newQuantity, purchasePrice: newAvgCost } : a)));
   };
 
   const addAllocation = async (allocation: Omit<Allocation, "id" | "ledgerId" | "createdAt">) => {
@@ -350,6 +373,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addAllocation,
         removeAllocation,
         updateAssetPrice,
+        adjustAssetPosition,
         updateGoldPrice: async (price24k: number) => {
           if (!currentLedgerId) return;
           await dbUpdateGoldPrice(currentLedgerId, price24k);

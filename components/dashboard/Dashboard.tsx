@@ -23,6 +23,36 @@ import { UpcomingInstallments } from "./UpcomingInstallments";
 export const Dashboard = () => {
   const { transactions, ledgers, currentLedgerId, removeTransaction } = useFinance();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const totalIncome = transactions
+    .filter((t: Transaction) => t.type === "income")
+    .reduce((acc: number, t: Transaction) => acc + t.amount, 0);
+  
+  const totalExpense = transactions
+    .filter((t: Transaction) => t.type === "expense")
+    .reduce((acc: number, t: Transaction) => acc + t.amount, 0);
+
+  const balance = totalIncome - totalExpense;
+
+  // Calculate category breakdown
+  const expenseByCategory = React.useMemo(() => {
+    const breakdown = transactions
+      .filter((t: Transaction) => t.type === "expense")
+      .reduce((acc: Record<string, number>, t: Transaction) => {
+        acc[t.category] = (acc[t.category] || 0) + t.amount;
+        return acc;
+      }, {} as Record<string, number>);
+
+    return Object.entries(breakdown)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 4)
+      .map(([name, amount]) => ({
+        name,
+        amount,
+        percentage: totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0
+      }));
+  }, [transactions, totalExpense]);
+
   if (currentLedgerId === null) {
     return (
       <div className="flex-1 flex items-center justify-center p-10">
@@ -36,16 +66,6 @@ export const Dashboard = () => {
   }
 
   const currentLedger = ledgers.find((l: Ledger) => l.id === currentLedgerId);
-
-  const totalIncome = transactions
-    .filter((t: Transaction) => t.type === "income")
-    .reduce((acc: number, t: Transaction) => acc + t.amount, 0);
-  
-  const totalExpense = transactions
-    .filter((t: Transaction) => t.type === "expense")
-    .reduce((acc: number, t: Transaction) => acc + t.amount, 0);
-
-  const balance = totalIncome - totalExpense;
 
   const container = {
     hidden: { opacity: 0 },
@@ -147,46 +167,36 @@ export const Dashboard = () => {
               <Button variant="ghost" size="sm" className="text-[10px] uppercase tracking-widest font-bold opacity-40 hover:opacity-100">Analytics</Button>
             </div>
             <div className="space-y-6">
-              <div className="flex items-center gap-6">
-                <div className="flex-1 space-y-2">
-                  <div className="flex justify-between text-[10px] font-bold text-white/40 uppercase tracking-wider">
-                    <span>Housing</span>
-                    <span>42%</span>
+              {expenseByCategory.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 gap-6">
+                    {expenseByCategory.map((cat, i) => (
+                      <div key={cat.name} className="space-y-2">
+                        <div className="flex justify-between text-[10px] font-bold text-white/40 uppercase tracking-wider">
+                          <span>{cat.name}</span>
+                          <span>{cat.percentage}%</span>
+                        </div>
+                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${cat.percentage}%` }}
+                            className={cn(
+                              "h-full",
+                              i === 0 ? "bg-white" : 
+                              i === 1 ? "bg-white/40" : 
+                              i === 2 ? "bg-emerald-500" : "bg-white/10"
+                            )} 
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-white w-[42%]" />
-                  </div>
+                </>
+              ) : (
+                <div className="h-20 flex items-center justify-center border border-dashed border-white/5 rounded-2xl">
+                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">No Expenditures Recorded</p>
                 </div>
-                <div className="flex-1 space-y-2">
-                  <div className="flex justify-between text-[10px] font-bold text-white/40 uppercase tracking-wider">
-                    <span>Lifestyle</span>
-                    <span>28%</span>
-                  </div>
-                  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-white/40 w-[28%]" />
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="flex-1 space-y-2">
-                  <div className="flex justify-between text-[10px] font-bold text-white/40 uppercase tracking-wider">
-                    <span>Savings</span>
-                    <span>15%</span>
-                  </div>
-                  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 w-[15%]" />
-                  </div>
-                </div>
-                <div className="flex-1 space-y-2">
-                  <div className="flex justify-between text-[10px] font-bold text-white/40 uppercase tracking-wider">
-                    <span>Other</span>
-                    <span>15%</span>
-                  </div>
-                  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-white/10 w-[15%]" />
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </Card>
         </motion.div>

@@ -32,8 +32,8 @@ export const AddTransactionModal = ({ isOpen, onClose }: { isOpen: boolean, onCl
   };
 
   const categories = type === "income" 
-    ? ["Salary", "Freelance", "Investment", "Gift", "Other"]
-    : ["Food", "Transport", "Rent", "Utilities", "Shopping", "Entertainment", "Health", "Other"];
+    ? ["Salary", "Freelance", "Investment", "PickMe", "Gift", "Other"]
+    : ["Food", "Transport", "Rent", "Utilities", "Shopping", "Entertainment", "Health", "Snacks", "Subscription", "Other"];
 
   return (
     <AnimatePresence>

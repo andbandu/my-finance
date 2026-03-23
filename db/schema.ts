@@ -43,6 +43,7 @@ export const assets = pgTable("assets", {
   ledgerId: integer("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }).notNull(),
   type: text("type").notNull(), // "gold" | "stock"
   name: text("name").notNull(),
+  ticker: text("ticker"), // Ticker symbol for stocks
   quantity: numeric("quantity", { precision: 12, scale: 4 }).notNull(), // grams or shares
   purchasePrice: numeric("purchase_price", { precision: 12, scale: 2 }),
   currentPrice: numeric("current_price", { precision: 12, scale: 2 }),

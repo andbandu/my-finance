@@ -30,7 +30,9 @@ const CATEGORY_ICONS: Record<string, any> = {
   "Food": UtensilsCrossed,
   "Grocery": ShoppingCart,
   "Utilities": Layers,
-  "Sub": Package,
+  "Subscription": Package,
+  "Snacks": Milk,
+  "PickMe": CreditCard,
 };
 
 export const AllocationsView = () => {
@@ -352,7 +354,8 @@ export const AllocationsView = () => {
                         <option value="Housing" className="bg-[#0A0A0A]">Housing</option>
                         <option value="Transport" className="bg-[#0A0A0A]">Transport</option>
                         <option value="Utilities" className="bg-[#0A0A0A]">Utilities</option>
-                        <option value="Sub" className="bg-[#0A0A0A]">Subscription</option>
+                        <option value="Subscription" className="bg-[#0A0A0A]">Subscription</option>
+                        <option value="Snacks" className="bg-[#0A0A0A]">Snacks</option>
                       </select>
                     </div>
                   </div>
