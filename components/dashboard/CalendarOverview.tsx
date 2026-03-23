@@ -23,13 +23,20 @@ export const CalendarOverview = () => {
     const daysInMonth = lastDay.getDate();
     const startingDay = firstDay.getDay(); // 0-6 (Sun-Sat)
     
-    // Group transactions by date string YYYY-MM-DD
+    // Group transactions by local date string YYYY-MM-DD
     const dailyNet: Record<string, number> = {};
+    
+    const getDateKey = (date: Date) => {
+      const y = date.getFullYear();
+      const m = date.getMonth() + 1;
+      const d = date.getDate();
+      return `${y}-${m < 10 ? '0' + m : m}-${d < 10 ? '0' + d : d}`;
+    };
     
     transactions.forEach((t: Transaction) => {
       const d = new Date(t.date);
       if (d.getFullYear() === year && d.getMonth() === month) {
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = getDateKey(d);
         const amount = t.type === "income" ? t.amount : -t.amount;
         dailyNet[dateStr] = (dailyNet[dateStr] || 0) + amount;
       }
@@ -44,7 +51,7 @@ export const CalendarOverview = () => {
     // Actual days
     for (let i = 1; i <= daysInMonth; i++) {
       const currentDay = new Date(year, month, i);
-      const dateStr = currentDay.toISOString().split('T')[0];
+      const dateStr = getDateKey(currentDay);
       days.push({
         day: i,
         net: dailyNet[dateStr] || 0,
