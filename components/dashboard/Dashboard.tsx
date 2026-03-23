@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { AddTransactionModal } from "./AddTransactionModal";
 import { motion } from "framer-motion";
 import { UpcomingInstallments } from "./UpcomingInstallments";
+import { CalendarOverview } from "./CalendarOverview";
 
 export const Dashboard = () => {
   const { transactions, ledgers, currentLedgerId, removeTransaction } = useFinance();
@@ -112,10 +113,10 @@ export const Dashboard = () => {
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-12"
+        className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-12"
       >
-        {/* Main Balance Card - Spans 2x2 */}
-        <motion.div variants={item} className="md:col-span-2 md:row-span-2">
+        {/* Main Balance Card - Spans 4 columns */}
+        <motion.div variants={item} className="md:col-span-4">
           <Card className="h-full relative overflow-hidden flex flex-col justify-between group p-10 bg-violet-600/[0.03] border-violet-500/10">
             <div className="absolute top-0 right-0 p-8 text-violet-500 opacity-5 group-hover:opacity-10 transition-opacity">
               <Layers size={120} />
@@ -133,9 +134,14 @@ export const Dashboard = () => {
           </Card>
         </motion.div>
 
+        {/* Calendar Overview - Spans 2 columns */}
+        <motion.div variants={item} className="md:col-span-2">
+           <CalendarOverview />
+        </motion.div>
+
         {/* Income Card */}
         <motion.div variants={item} className="md:col-span-2">
-          <Card className="relative overflow-hidden group bg-white/[0.02] border-emerald-500/5">
+          <Card className="relative overflow-hidden group bg-white/[0.02] border-emerald-500/5 p-6">
             <div className="flex items-center justify-between mb-4">
               <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest">Income</p>
               <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
@@ -148,7 +154,7 @@ export const Dashboard = () => {
 
         {/* Expense Card */}
         <motion.div variants={item} className="md:col-span-2">
-          <Card className="relative overflow-hidden group bg-white/[0.02] border-rose-500/5">
+          <Card className="relative overflow-hidden group bg-white/[0.02] border-rose-500/5 p-6">
             <div className="flex items-center justify-between mb-4">
               <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest">Expenditure</p>
               <div className="p-2 bg-rose-500/10 text-rose-500 rounded-lg">
@@ -159,21 +165,21 @@ export const Dashboard = () => {
           </Card>
         </motion.div>
 
-        {/* Categories Breakdown - Spans 4 columns */}
-        <motion.div variants={item} className="md:col-span-4 lg:col-span-4">
-          <Card className="h-full bg-white/[0.01] border-none">
-            <div className="flex items-center justify-between mb-8">
+        {/* Categories Breakdown - Spans 2 columns */}
+        <motion.div variants={item} className="md:col-span-2">
+          <Card className="h-full bg-white/[0.01] border-none p-6">
+            <div className="flex items-center justify-between mb-6">
               <h4 className="text-sm font-bold text-white/60">Spending Allocation</h4>
               <Button variant="ghost" size="sm" className="text-[10px] uppercase tracking-widest font-bold opacity-40 hover:opacity-100">Analytics</Button>
             </div>
-            <div className="space-y-6">
+            <div className="space-y-4">
               {expenseByCategory.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-2 gap-6">
-                    {expenseByCategory.map((cat, i) => (
-                      <div key={cat.name} className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-bold text-white/40 uppercase tracking-wider">
-                          <span>{cat.name}</span>
+                  <div className="flex flex-col gap-4">
+                    {expenseByCategory.slice(0, 3).map((cat, i) => (
+                      <div key={cat.name} className="space-y-1">
+                        <div className="flex justify-between text-[9px] font-bold text-white/40 uppercase tracking-wider">
+                          <span className="truncate max-w-[80px]">{cat.name}</span>
                           <span>{cat.percentage}%</span>
                         </div>
                         <div className="h-1 bg-white/5 rounded-full overflow-hidden">
@@ -183,8 +189,7 @@ export const Dashboard = () => {
                             className={cn(
                               "h-full",
                               i === 0 ? "bg-white" : 
-                              i === 1 ? "bg-white/40" : 
-                              i === 2 ? "bg-emerald-500" : "bg-white/10"
+                              i === 1 ? "bg-white/40" : "bg-emerald-500"
                             )} 
                           />
                         </div>
@@ -193,8 +198,8 @@ export const Dashboard = () => {
                   </div>
                 </>
               ) : (
-                <div className="h-20 flex items-center justify-center border border-dashed border-white/5 rounded-2xl">
-                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">No Expenditures Recorded</p>
+                <div className="h-14 flex items-center justify-center border border-dashed border-white/5 rounded-xl">
+                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">No Data</p>
                 </div>
               )}
             </div>
