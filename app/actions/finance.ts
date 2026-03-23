@@ -138,7 +138,7 @@ export async function addAsset(data: {
   ledgerId: number;
   type: string;
   name: string;
-  ticker?: string;
+  ticker?: string | null;
   quantity: any;
   purchasePrice?: any;
   currentPrice?: any;
