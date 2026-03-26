@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Search,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Bitcoin
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ const UpdatePriceButton = ({ id, currentPrice }: { id: number, currentPrice: num
     return (
       <button 
         onClick={() => setIsEditing(true)}
-        className="text-[9px] font-bold text-violet-400/60 hover:text-violet-400 uppercase tracking-[0.15em] flex items-center gap-1 mt-1 transition-colors"
+        className="text-[9px] font-bold text-orange-400/60 hover:text-orange-400 uppercase tracking-[0.15em] flex items-center gap-1 mt-1 transition-colors"
       >
         <Edit3 size={10} /> Update Price
       </button>
@@ -41,7 +42,7 @@ const UpdatePriceButton = ({ id, currentPrice }: { id: number, currentPrice: num
         autoFocus
         value={price}
         onChange={(e) => setPrice(e.target.value)}
-        className="w-16 bg-white/5 border border-white/10 rounded-md px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+        className="w-16 bg-white/5 border border-white/10 rounded-md px-1 py-0.5 text-[10px] text-white focus:outline-none focus:ring-1 focus:ring-orange-500/50"
       />
       <button 
         onClick={async () => {
@@ -83,7 +84,7 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
     <>
       <button 
         onClick={() => setIsOpen(true)}
-        className="w-10 h-10 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center hover:bg-violet-600 hover:text-white transition-all"
+        className="w-10 h-10 rounded-xl bg-orange-600/10 text-orange-400 flex items-center justify-center hover:bg-orange-600 hover:text-white transition-all"
         title="Manage position"
       >
         <BarChart4 size={14} />
@@ -107,8 +108,8 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
             >
               <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-400 flex items-center justify-center">
-                    <Briefcase size={14} />
+                  <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center">
+                    <Bitcoin size={14} />
                   </div>
                   <h3 className="font-bold text-white tracking-tight uppercase">{asset.ticker} Position</h3>
                 </div>
@@ -138,12 +139,12 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
 
                 <form onSubmit={handleAdjust} className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">Quantity (Shares)</label>
+                    <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">Quantity (Tokens/Coins)</label>
                     <input 
-                      type="number" step="0.0001"
+                      type="number" step="0.00000001"
                       autoFocus
-                      placeholder="0.00"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                      placeholder="0.0000"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
                       value={qty}
                       onChange={(e) => setQty(e.target.value)}
                     />
@@ -151,11 +152,11 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
                   
                   {mode === "buy" && (
                     <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">Purchase Price</label>
+                      <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">Acquisition Price (per Unit)</label>
                       <input 
                         type="number" step="0.01"
                         placeholder="0.00"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
                         value={price}
                         onChange={(e) => setPrice(e.target.value)}
                       />
@@ -177,7 +178,7 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
                         mode === "buy" ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20" : "bg-rose-600 hover:bg-rose-700 shadow-rose-500/20"
                       )}
                     >
-                      Process Transaction
+                      Process Web3 Tx
                     </Button>
                   </div>
                 </form>
@@ -190,17 +191,17 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
   );
 };
 
-export const StockAssets = () => {
+export const CryptoAssets = () => {
   const { assets, addAsset, removeAsset, updateAssetPrice } = useFinance();
   const [isAdding, setIsAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [newAsset, setNewAsset] = useState({
     name: "",
     ticker: "",
-    quantity: "", // Shares
+    quantity: "", 
     purchasePrice: "",
     currentPrice: "",
-    type: "stock" as const
+    type: "crypto" as const
   });
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -212,23 +213,23 @@ export const StockAssets = () => {
     }
   }, [successToast]);
 
-  const stockAssets = assets.filter(a => 
-    a.type === "stock" && 
-    (a.quantity > 0 || Math.abs(a.realizedPnL || 0) > 0.01) &&
+  const cryptoAssets = assets.filter(a => 
+    a.type === "crypto" && 
+    (a.quantity > 0 || Math.abs(a.realizedPnL || 0) > 0.000001) &&
     (a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
      a.ticker?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const stats = useMemo(() => {
-    const totalValue = stockAssets.reduce((acc, a) => acc + (a.currentPrice * a.quantity), 0);
-    const totalCost = stockAssets.reduce((acc, a) => acc + (a.purchasePrice * a.quantity), 0);
-    const unrealizedProfit = stockAssets.reduce((acc, a) => acc + ((a.currentPrice - a.purchasePrice) * a.quantity), 0);
-    const realizedProfit = stockAssets.reduce((acc, a) => acc + (a.realizedPnL || 0), 0);
+    const totalValue = cryptoAssets.reduce((acc, a) => acc + (a.currentPrice * a.quantity), 0);
+    const totalCost = cryptoAssets.reduce((acc, a) => acc + (a.purchasePrice * a.quantity), 0);
+    const unrealizedProfit = cryptoAssets.reduce((acc, a) => acc + ((a.currentPrice - a.purchasePrice) * a.quantity), 0);
+    const realizedProfit = cryptoAssets.reduce((acc, a) => acc + (a.realizedPnL || 0), 0);
     const totalProfit = unrealizedProfit + realizedProfit;
     const profitPercentage = totalCost > 0 ? (unrealizedProfit / totalCost) * 100 : 0;
     
     return { totalValue, totalCost, unrealizedProfit, realizedProfit, totalProfit, profitPercentage };
-  }, [stockAssets]);
+  }, [cryptoAssets]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,12 +242,12 @@ export const StockAssets = () => {
       purchasePrice: parseFloat(newAsset.purchasePrice) || 0,
       currentPrice: parseFloat(newAsset.currentPrice) || parseFloat(newAsset.purchasePrice) || 0,
       realizedPnL: 0,
-      type: "stock",
+      type: "crypto",
       date: new Date().toISOString()
     });
     
-    setSuccessToast(`${newAsset.ticker.toUpperCase()} added to portfolio`);
-    setNewAsset({ name: "", ticker: "", quantity: "", purchasePrice: "", currentPrice: "", type: "stock" });
+    setSuccessToast(`${newAsset.ticker.toUpperCase()} added to cold storage`);
+    setNewAsset({ name: "", ticker: "", quantity: "", purchasePrice: "", currentPrice: "", type: "crypto" });
     setIsAdding(false);
   };
 
@@ -268,28 +269,28 @@ export const StockAssets = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
           <h2 className="text-5xl font-black text-white tracking-tighter mb-4 flex items-center gap-4">
-            Stock Portfolio <BarChart4 className="text-violet-400" size={32} />
+            Crypto Holdings <Bitcoin className="text-orange-400" size={32} />
           </h2>
           <p className="text-white/40 font-medium max-w-md leading-relaxed">
-            Monitor your equity investments, track dividend yields, and analyze portfolio performance.
+            Monitor decentralized assets, analyze gas-adjusted entries, and track long-term hodl performance.
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="relative w-64">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
             <input 
-              placeholder="Filter holdings..."
+              placeholder="Filter assets..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-xs text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-xs text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
             />
           </div>
           <Button 
             onClick={() => setIsAdding(true)}
-            className="bg-violet-600 hover:bg-violet-700 text-white border-0 h-14 px-8 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] shadow-2xl shadow-violet-600/20 transition-all hover:scale-105 active:scale-95"
+            className="bg-orange-600 hover:bg-orange-700 text-white border-0 h-14 px-8 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] shadow-2xl shadow-orange-600/20 transition-all hover:scale-105 active:scale-95"
           >
             <Plus size={18} className="mr-2" />
-            Buy Listing
+            Add Asset
           </Button>
         </div>
       </div>
@@ -297,19 +298,19 @@ export const StockAssets = () => {
       {/* Stats Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
         <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 text-violet-500/10 group-hover:scale-110 transition-transform">
+          <div className="absolute top-0 right-0 p-8 text-orange-500/10 group-hover:scale-110 transition-transform">
             <Briefcase size={48} />
           </div>
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Portfolio Value</p>
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Market Valuation</p>
           <h3 className="text-5xl font-black text-white tracking-tighter mb-1">{formatCurrency(stats.totalValue)}</h3>
-          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Total Net Asset Value</p>
+          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Aggregate Wallet Value</p>
         </Card>
 
         <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 text-white/5 group-hover:scale-110 transition-transform">
             <TrendingUp size={48} />
           </div>
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Total Unrealized P/L</p>
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Floating Unrealized P/L</p>
           <div className="flex items-center gap-3 mb-1">
             <h3 className={cn(
               "text-5xl font-black tracking-tighter",
@@ -324,33 +325,22 @@ export const StockAssets = () => {
               {stats.profitPercentage.toFixed(2)}%
             </div>
           </div>
-          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Open Positions Performance</p>
+          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Active Position Growth</p>
         </Card>
 
         <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 text-emerald-500/5 group-hover:scale-110 transition-transform">
             <CheckCircle2 size={48} />
           </div>
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Realized Profit/Loss</p>
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Settled Realized Profit</p>
           <h3 className={cn(
             "text-5xl font-black tracking-tighter mb-1",
             stats.realizedProfit >= 0 ? "text-emerald-400" : "text-rose-400"
           )}>
             {stats.realizedProfit >= 0 ? "+" : ""}{formatCurrency(stats.realizedProfit)}
           </h3>
-          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Captured Profits from Sales</p>
+          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Total Value Extracted</p>
         </Card>
-
-        <div className="grid grid-cols-2 gap-6">
-          <Card className="p-8 bg-white/[0.02] border-white/5 flex flex-col justify-center">
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-2">Total Cost</p>
-            <h4 className="text-2xl font-bold text-white/60 tracking-tight">{formatCurrency(stats.totalCost)}</h4>
-          </Card>
-          <Card className="p-8 bg-white/[0.02] border-white/5 flex flex-col justify-center">
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-2">Holdings</p>
-            <h4 className="text-2xl font-bold text-white/60 tracking-tight">{stockAssets.length} Tickers</h4>
-          </Card>
-        </div>
       </div>
 
       {/* Portfolio Table */}
@@ -359,9 +349,9 @@ export const StockAssets = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-white/[0.02] border-b border-white/5">
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Equity / Listing</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Project / Token</th>
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Quantity</th>
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Avg Cost</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Avg Entry</th>
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Price</th>
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Unrealized</th>
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Realized</th>
@@ -369,7 +359,7 @@ export const StockAssets = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {stockAssets.map((asset) => {
+              {cryptoAssets.map((asset) => {
                 const marketValue = asset.quantity * asset.currentPrice;
                 const costBasis = asset.quantity * asset.purchasePrice;
                 const gl = marketValue - costBasis;
@@ -379,8 +369,8 @@ export const StockAssets = () => {
                   <tr key={asset.id} className="hover:bg-white/[0.01] transition-colors group">
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-[14px] bg-white/[0.02] border border-white/5 text-white/40 flex items-center justify-center font-black text-xs uppercase">
-                          {asset.ticker?.substring(0, 2) || "??"}
+                        <div className="w-10 h-10 rounded-[14px] bg-white/[0.02] border border-white/5 text-white/40 flex items-center justify-center font-black text-[10px] uppercase">
+                          {asset.ticker?.substring(0, 3) || "???"}
                         </div>
                         <div>
                           <p className="text-sm font-black text-white tracking-tight uppercase">{asset.ticker}</p>
@@ -389,8 +379,8 @@ export const StockAssets = () => {
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                      <p className="text-sm font-bold text-white tracking-tighter">{asset.quantity.toLocaleString()}</p>
-                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Shares Held</p>
+                      <p className="text-sm font-bold text-white tracking-tighter">{asset.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}</p>
+                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Units Held</p>
                     </td>
                     <td className="px-8 py-6">
                       <p className="text-sm font-bold text-white/40 tracking-tighter">{formatCurrency(asset.purchasePrice)}</p>
@@ -417,7 +407,7 @@ export const StockAssets = () => {
                             </p>
                           </>
                         ) : (
-                          <span className="text-[10px] text-white/10 font-bold uppercase">No Open Pos</span>
+                          <span className="text-[10px] text-white/10 font-bold uppercase">Fully Exited</span>
                         )}
                       </div>
                     </td>
@@ -429,7 +419,7 @@ export const StockAssets = () => {
                         )}>
                           {(asset.realizedPnL || 0) >= 0 ? "+" : ""}{formatCurrency(asset.realizedPnL || 0)}
                         </p>
-                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Total Realized</p>
+                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Realized Gains</p>
                       </div>
                     </td>
                     <td className="px-8 py-6">
@@ -438,7 +428,7 @@ export const StockAssets = () => {
                         <button 
                           onClick={() => removeAsset(asset.id)}
                           className="w-10 h-10 rounded-xl bg-white/5 text-white/20 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
-                          title="Remove holding"
+                          title="Purge record"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -447,16 +437,16 @@ export const StockAssets = () => {
                   </tr>
                 );
               })}
-              {stockAssets.length === 0 && (
+              {cryptoAssets.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-8 py-20 text-center">
                     <div className="flex flex-col items-center gap-4">
                       <div className="w-16 h-16 rounded-3xl bg-white/[0.02] flex items-center justify-center text-white/5">
-                        <TrendingUp size={32} />
+                        <Bitcoin size={32} />
                       </div>
                       <div>
-                        <p className="text-lg font-bold text-white/40 tracking-tight">Empty Portfolio</p>
-                        <p className="text-xs text-white/20">Add your first equity holding to start tracking.</p>
+                        <p className="text-lg font-bold text-white/40 tracking-tight">Wallet is empty</p>
+                        <p className="text-xs text-white/20">Add your first crypto asset to start tracking gains.</p>
                       </div>
                     </div>
                   </td>
@@ -467,7 +457,7 @@ export const StockAssets = () => {
         </div>
       </Card>
 
-      {/* Add Stock Modal */}
+      {/* Add Crypto Modal */}
       <AnimatePresence>
         {isAdding && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
@@ -484,33 +474,33 @@ export const StockAssets = () => {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl"
             >
-              <div className="p-8 border-b border-white/5 flex items-center justify-between bg-violet-600/5">
+              <div className="p-8 border-b border-white/5 flex items-center justify-between bg-orange-600/5">
                 <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight">Buy Equity Listing</h3>
-                  <p className="text-xs text-white/40">Enter listing details to analyze portfolio weights.</p>
+                  <h3 className="text-xl font-bold text-white tracking-tight">Onboard Digital Asset</h3>
+                  <p className="text-xs text-white/40">Secure a new token entry for global tracking.</p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-violet-500/10 text-violet-400 flex items-center justify-center">
-                  <BarChart4 size={20} />
+                <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-400 flex items-center justify-center">
+                  <Bitcoin size={20} />
                 </div>
               </div>
 
               <form onSubmit={handleSubmit} className="p-8 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Ticker Symbol</label>
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Asset Ticker</label>
                     <input 
                       autoFocus
-                      placeholder="e.g., AAPL"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all placeholder:uppercase"
+                      placeholder="e.g., BTC"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:uppercase"
                       value={newAsset.ticker}
                       onChange={(e) => setNewAsset({ ...newAsset, ticker: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Full Company Name</label>
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Protocol / Name</label>
                     <input 
-                      placeholder="e.g., Apple Inc"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                      placeholder="e.g., Bitcoin"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
                       value={newAsset.name}
                       onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
                     />
@@ -519,21 +509,21 @@ export const StockAssets = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Total Shares</label>
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Unit Quantity</label>
                     <input 
-                      type="number" step="0.0001"
-                      placeholder="0.00"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                      type="number" step="0.00000001"
+                      placeholder="0.0000"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
                       value={newAsset.quantity}
                       onChange={(e) => setNewAsset({ ...newAsset, quantity: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Current Price</label>
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Current Price (USD)</label>
                     <input 
                       type="number"
                       placeholder="0.00"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
                       value={newAsset.currentPrice}
                       onChange={(e) => setNewAsset({ ...newAsset, currentPrice: e.target.value })}
                     />
@@ -541,7 +531,7 @@ export const StockAssets = () => {
                 </div>
 
                 <div className="space-y-2 text-center p-6 rounded-2xl bg-white/[0.02] border border-white/5">
-                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Average Purchase Price</p>
+                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Average Entry Price</p>
                   <input 
                     type="number"
                     placeholder="0.00"
@@ -561,9 +551,9 @@ export const StockAssets = () => {
                   </Button>
                   <Button 
                     type="submit"
-                    className="flex-[2] bg-violet-600 hover:bg-violet-700 text-white border-0 h-14 rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-violet-600/20"
+                    className="flex-[2] bg-orange-600 hover:bg-orange-700 text-white border-0 h-14 rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-orange-600/20"
                   >
-                    Add to Portfolio
+                    Cold Storage Add
                   </Button>
                 </div>
               </form>
@@ -580,7 +570,7 @@ export const StockAssets = () => {
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200]"
           >
-            <div className="bg-violet-600 text-white px-6 py-4 rounded-[24px] shadow-2xl shadow-violet-600/20 flex items-center gap-4 border border-violet-400/20">
+            <div className="bg-orange-600 text-white px-6 py-4 rounded-[24px] shadow-2xl shadow-orange-600/20 flex items-center gap-4 border border-orange-400/20">
               <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center">
                 <CheckCircle2 size={16} />
               </div>

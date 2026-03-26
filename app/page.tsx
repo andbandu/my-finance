@@ -7,6 +7,7 @@ import { DebtTracker } from "@/components/debt/DebtTracker";
 import { GoldLoanTracker } from "@/components/debt/GoldLoanTracker";
 import { GoldAssets } from "@/components/assets/GoldAssets";
 import { StockAssets } from "@/components/assets/StockAssets";
+import { CryptoAssets } from "@/components/assets/CryptoAssets";
 import { Reports } from "@/components/reports/Reports";
 
 import { TransactionsView } from "@/components/dashboard/TransactionsView";
@@ -26,6 +27,7 @@ export default function Home() {
         {activeTab === "gold_loans" && <GoldLoanTracker />}
         {activeTab === "gold_assets" && <GoldAssets />}
         {activeTab === "stock_assets" && <StockAssets />}
+        {activeTab === "crypto_assets" && <CryptoAssets />}
         {activeTab === "reports" && <Reports />}
         {activeTab === "transactions" && <TransactionsView />}
         {activeTab === "monthly" && <MonthlyView />}

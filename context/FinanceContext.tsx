@@ -53,12 +53,13 @@ export interface Ledger {
 export interface Asset {
   id: number;
   ledgerId: number;
-  type: "gold" | "stock";
+  type: "gold" | "stock" | "crypto";
   name: string;
-  ticker?: string | null; // Ticker symbol for stocks
+  ticker?: string | null; // Ticker symbol for stocks/crypto
   quantity: number;
   purchasePrice: number;
   currentPrice: number;
+  realizedPnL: number;
   purity?: number;
   date: string;
 }
@@ -167,11 +168,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         setAssets(dbAssets.map((a: any) => ({
           ...a,
-          type: a.type as "gold" | "stock",
+          type: a.type as "gold" | "stock" | "crypto",
           ticker: a.ticker || undefined,
           quantity: parseFloat(a.quantity.toString()),
           purchasePrice: parseFloat(a.purchasePrice?.toString() || "0"),
           currentPrice: parseFloat(a.currentPrice?.toString() || "0"),
+          realizedPnL: parseFloat(a.realizedPnL?.toString() || "0"),
           purity: a.purity ? parseFloat(a.purity.toString()) : undefined,
           date: a.date?.toISOString()
         })));
@@ -285,11 +287,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     setAssets([{
       ...newDbAsset,
-      type: newDbAsset.type as "gold" | "stock",
+      type: newDbAsset.type as "gold" | "stock" | "crypto",
       ticker: newDbAsset.ticker || undefined,
       quantity: parseFloat(newDbAsset.quantity.toString()),
       purchasePrice: parseFloat(newDbAsset.purchasePrice?.toString() || "0"),
       currentPrice: parseFloat(newDbAsset.currentPrice?.toString() || "0"),
+      realizedPnL: parseFloat(newDbAsset.realizedPnL?.toString() || "0"),
       purity: newDbAsset.purity ? parseFloat(newDbAsset.purity.toString()) : undefined,
       date: newDbAsset.date?.toISOString() || new Date().toISOString()
     }, ...assets]);
@@ -313,14 +316,26 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (newQuantity < 0) newQuantity = 0;
 
     let newAvgCost = asset.purchasePrice;
+    let profitFromSale = 0;
+
     if (quantityChange > 0) {
       // Re-buying: Recalculate average cost
       newAvgCost = ((asset.quantity * asset.purchasePrice) + (quantityChange * price)) / (asset.quantity + quantityChange);
+    } else if (quantityChange < 0) {
+      // Selling part of position: Calculate profit from sale
+      const qtySold = Math.abs(quantityChange);
+      profitFromSale = (price - asset.purchasePrice) * qtySold;
     }
-    // For selling (quantityChange < 0), avg cost stays the same
 
-    await dbUpdateAssetPosition(id, newQuantity, newAvgCost);
-    setAssets(assets.map((a) => (a.id === id ? { ...a, quantity: newQuantity, purchasePrice: newAvgCost } : a)));
+    const newRealizedPnL = (asset.realizedPnL || 0) + profitFromSale;
+
+    await dbUpdateAssetPosition(id, newQuantity, newAvgCost, newRealizedPnL);
+    setAssets(assets.map((a) => (a.id === id ? { 
+      ...a, 
+      quantity: newQuantity, 
+      purchasePrice: newAvgCost,
+      realizedPnL: newRealizedPnL
+    } : a)));
   };
 
   const addAllocation = async (allocation: Omit<Allocation, "id" | "ledgerId" | "createdAt">) => {

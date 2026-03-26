@@ -89,6 +89,7 @@ export const GoldAssets = () => {
         ? parseFloat(newAsset.purchasePrice) / (parseFloat(newAsset.quantity) || 1)
         : currentPrice, // Default cost to current market if not specified
       currentPrice: currentPrice,
+      realizedPnL: 0,
       purity: pur,
       type: "gold",
       date: new Date().toISOString()

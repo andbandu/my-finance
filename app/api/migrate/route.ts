@@ -21,9 +21,8 @@ export async function GET() {
       );
     `);
     
-    await sql(`
-      ALTER TABLE assets ADD COLUMN IF NOT EXISTS ticker TEXT;
-    `);
+    await sql(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS ticker TEXT;`);
+    await sql(`ALTER TABLE assets ADD COLUMN IF NOT EXISTS realized_pnl NUMERIC(12, 2) DEFAULT '0';`);
 
     return NextResponse.json({ success: true, message: "Migration completed." });
   } catch (e: any) {

@@ -142,12 +142,14 @@ export async function addAsset(data: {
   quantity: any;
   purchasePrice?: any;
   currentPrice?: any;
+  realizedPnL?: any;
   purity?: any;
   date?: string;
 }) {
   const result = await db.insert(assets).values({
     ...data,
     quantity: data.quantity.toString(),
+    realizedPnL: data.realizedPnL?.toString() || "0",
     purchasePrice: data.purchasePrice?.toString() || null,
     currentPrice: data.currentPrice?.toString() || data.purchasePrice?.toString() || null,
     purity: data.purity?.toString() || null,
@@ -162,11 +164,15 @@ export async function updateAssetPrice(id: number, currentPrice: any) {
   revalidatePath("/");
 }
 
-export async function updateAssetPosition(id: number, quantity: any, purchasePrice: any) {
-  await db.update(assets).set({ 
+export async function updateAssetPosition(id: number, quantity: any, purchasePrice: any, realizedPnL?: any) {
+  const updateData: any = { 
     quantity: quantity.toString(),
     purchasePrice: purchasePrice.toString()
-  }).where(eq(assets.id, id));
+  };
+  if (realizedPnL !== undefined) {
+    updateData.realizedPnL = realizedPnL.toString();
+  }
+  await db.update(assets).set(updateData).where(eq(assets.id, id));
   revalidatePath("/");
 }
 

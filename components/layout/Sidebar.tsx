@@ -12,7 +12,8 @@ import {
   Search,
   Layers,
   Calendar,
-  Coins
+  Coins,
+  Bitcoin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,7 @@ export const Sidebar = ({ activeTab, setActiveTab }: any) => {
     { id: "gold_loans", label: "Gold Loans", icon: Coins, category: "Liabilities" },
     { id: "gold_assets", label: "Gold", icon: Coins, category: "Assets" },
     { id: "stock_assets", label: "Stocks", icon: Layers, category: "Assets" },
+    { id: "crypto_assets", label: "Crypto", icon: Bitcoin, category: "Assets" },
   ].filter(item => item.label.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (

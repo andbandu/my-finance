@@ -41,12 +41,13 @@ export const debts = pgTable("debts", {
 export const assets = pgTable("assets", {
   id: serial("id").primaryKey(),
   ledgerId: integer("ledger_id").references(() => ledgers.id, { onDelete: "cascade" }).notNull(),
-  type: text("type").notNull(), // "gold" | "stock"
+  type: text("type").notNull(), // "gold" | "stock" | "crypto"
   name: text("name").notNull(),
-  ticker: text("ticker"), // Ticker symbol for stocks
-  quantity: numeric("quantity", { precision: 12, scale: 4 }).notNull(), // grams or shares
+  ticker: text("ticker"), // Ticker symbol for stocks/crypto
+  quantity: numeric("quantity", { precision: 12, scale: 4 }).notNull(), // grams or shares/tokens
   purchasePrice: numeric("purchase_price", { precision: 12, scale: 2 }),
   currentPrice: numeric("current_price", { precision: 12, scale: 2 }),
+  realizedPnL: numeric("realized_pnl", { precision: 12, scale: 2 }).default("0"),
   purity: numeric("purity", { precision: 4, scale: 1 }), // Karats (e.g. 24.0, 22.0)
   date: timestamp("date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
