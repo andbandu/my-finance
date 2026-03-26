@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useFinance, Asset } from "@/context/FinanceContext";
+import { useFinance, Asset, Transaction } from "@/context/FinanceContext";
 import { Card, Button, Badge } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 import { 
@@ -13,11 +13,17 @@ import {
   CheckCircle2,
   Search,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Edit3, 
+  Check, 
+  X, 
+  ArrowUpCircle, 
+  ArrowDownCircle,
+  History,
+  Calendar
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Edit3, Check, X, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 
 const UpdatePriceButton = ({ id, currentPrice }: { id: number, currentPrice: number }) => {
   const { updateAssetPrice } = useFinance();
@@ -103,14 +109,14 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-sm bg-[#0D0D0D] border border-white/10 rounded-[28px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-sm bg-[#0D0D0D] border border-white/10 rounded-[28px] overflow-hidden shadow-2xl font-sans"
             >
               <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-violet-500/10 text-violet-400 flex items-center justify-center">
                     <Briefcase size={14} />
                   </div>
-                  <h3 className="font-bold text-white tracking-tight uppercase">{asset.ticker} Position</h3>
+                  <h3 className="font-bold text-white tracking-tight uppercase">Manage {asset.ticker}</h3>
                 </div>
               </div>
 
@@ -138,29 +144,40 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
 
                 <form onSubmit={handleAdjust} className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">Quantity (Shares)</label>
+                    <div className="flex justify-between items-center px-1">
+                      <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Quantity (Shares)</label>
+                      {mode === "sell" && (
+                        <button 
+                          type="button"
+                          onClick={() => setQty(asset.quantity.toString())}
+                          className="text-[9px] font-bold text-violet-400 hover:text-violet-300 uppercase tracking-widest"
+                        >
+                          Close Entire Position
+                        </button>
+                      )}
+                    </div>
                     <input 
                       type="number" step="0.0001"
                       autoFocus
                       placeholder="0.00"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-sans"
                       value={qty}
                       onChange={(e) => setQty(e.target.value)}
                     />
                   </div>
                   
-                  {mode === "buy" && (
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">Purchase Price</label>
-                      <input 
-                        type="number" step="0.01"
-                        placeholder="0.00"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">
+                      {mode === "buy" ? "Purchase Price" : "Sale Price"}
+                    </label>
+                    <input 
+                      type="number" step="0.01"
+                      placeholder="0.00"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-sans"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                    />
+                  </div>
 
                   <div className="pt-4 flex gap-3">
                     <Button 
@@ -190,8 +207,154 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
   );
 };
 
+const AssetTransactions = ({ asset }: { asset: Asset }) => {
+  if (!asset.transactions || asset.transactions.length === 0) return (
+    <div className="py-4 text-center opacity-20 text-[10px] font-bold uppercase tracking-widest bg-white/[0.01]">
+      No transaction history
+    </div>
+  );
+
+  return (
+    <div className="bg-white/[0.01] border-y border-white/5 py-3 divide-y divide-white/5 mx-8 font-sans">
+      {asset.transactions.map((t) => (
+        <div key={t.id} className="flex items-center justify-between py-2 text-[10px]">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-6 h-6 rounded-lg flex items-center justify-center",
+              t.type === "income" ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+            )}>
+              {t.type === "income" ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            </div>
+            <div>
+              <p className="font-bold text-white uppercase tracking-tight">{t.description}</p>
+              <div className="flex items-center gap-2 opacity-40">
+                <Calendar size={8} /> 
+                <span>{new Date(t.date).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+          <p className={cn(
+            "font-black tracking-tight",
+            t.type === "income" ? "text-emerald-400" : "text-white"
+          )}>
+            {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount)}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const StockAssetRow = ({ asset, removeAsset }: { asset: Asset, removeAsset: (id: number) => void }) => {
+  const [showHistory, setShowHistory] = useState(false);
+  const marketValue = asset.quantity * asset.currentPrice;
+  const costBasis = asset.quantity * asset.purchasePrice;
+  const gl = marketValue - costBasis;
+  const glPercent = costBasis > 0 ? (gl / costBasis) * 100 : 0;
+
+  return (
+    <>
+      <tr className="hover:bg-white/[0.01] transition-colors group border-b border-white/5 last:border-0 font-sans">
+        <td className="px-8 py-6">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-[14px] bg-white/[0.02] border border-white/5 text-white/40 flex items-center justify-center font-black text-xs uppercase">
+              {asset.ticker?.substring(0, 2) || "??"}
+            </div>
+            <div>
+              <p className="text-sm font-black text-white tracking-tight uppercase">{asset.ticker}</p>
+              <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-none mt-1 truncate max-w-[120px]">{asset.name}</p>
+            </div>
+          </div>
+        </td>
+        <td className="px-8 py-6">
+          <p className="text-sm font-bold text-white tracking-tighter">{asset.quantity.toLocaleString()}</p>
+          <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Shares Held</p>
+        </td>
+        <td className="px-8 py-6">
+          <p className="text-sm font-bold text-white/40 tracking-tighter">{formatCurrency(asset.purchasePrice)}</p>
+        </td>
+        <td className="px-8 py-6">
+          <p className="text-sm font-black text-white tracking-tighter">{formatCurrency(asset.currentPrice)}</p>
+          <UpdatePriceButton id={asset.id} currentPrice={asset.currentPrice} />
+        </td>
+        <td className="px-8 py-6">
+          <div className="flex flex-col">
+            {asset.quantity > 0 ? (
+              <>
+                <p className={cn(
+                  "text-sm font-black tracking-tighter",
+                  gl >= 0 ? "text-emerald-400" : "text-rose-400"
+                )}>
+                  {gl >= 0 ? "+" : ""}{formatCurrency(gl)}
+                </p>
+                <p className={cn(
+                  "text-[9px] font-black uppercase tracking-widest mt-0.5",
+                  gl >= 0 ? "text-emerald-500/30" : "text-rose-500/30"
+                )}>
+                  {gl >= 0 ? "+" : ""}{glPercent.toFixed(2)}%
+                </p>
+              </>
+            ) : (
+              <span className="text-[10px] text-white/10 font-bold uppercase">Fully Exited</span>
+            )}
+          </div>
+        </td>
+        <td className="px-8 py-6">
+          <div className="flex flex-col">
+            <p className={cn(
+              "text-sm font-black tracking-tighter",
+              (asset.realizedPnL || 0) >= 0 ? "text-emerald-400" : "text-rose-400"
+            )}>
+              {(asset.realizedPnL || 0) >= 0 ? "+" : ""}{formatCurrency(asset.realizedPnL || 0)}
+            </p>
+            <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Realized Gains</p>
+          </div>
+        </td>
+        <td className="px-8 py-6 text-right">
+          <div className="flex items-center justify-end gap-2">
+            <button 
+              onClick={() => setShowHistory(!showHistory)}
+              className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                showHistory ? "bg-violet-600 text-white" : "bg-white/5 text-white/20 hover:text-white"
+              )}
+              title="Transaction History"
+            >
+              <History size={14} />
+            </button>
+            <PositionManager asset={asset} />
+            <button 
+              onClick={() => removeAsset(asset.id)}
+              className="w-10 h-10 rounded-xl bg-white/5 text-white/20 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
+              title="Purge record"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        </td>
+      </tr>
+      <AnimatePresence>
+        {showHistory && (
+          <tr>
+            <td colSpan={7} className="p-0 border-b border-white/5 bg-white/[0.01]">
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <AssetTransactions asset={asset} />
+              </motion.div>
+            </td>
+          </tr>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
 export const StockAssets = () => {
-  const { assets, addAsset, removeAsset, updateAssetPrice } = useFinance();
+  const { assets, addAsset, removeAsset } = useFinance();
   const [isAdding, setIsAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [newAsset, setNewAsset] = useState({
@@ -250,28 +413,15 @@ export const StockAssets = () => {
     setIsAdding(false);
   };
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
-
   return (
-    <div className="p-8 pb-32 max-w-[1600px] mx-auto">
+    <div className="p-8 pb-32 max-w-[1600px] mx-auto font-sans">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
           <h2 className="text-5xl font-black text-white tracking-tighter mb-4 flex items-center gap-4">
             Stock Portfolio <BarChart4 className="text-violet-400" size={32} />
           </h2>
           <p className="text-white/40 font-medium max-w-md leading-relaxed">
-            Monitor your equity investments, track dividend yields, and analyze portfolio performance.
+            Monitor your equity investments, track dividend yields, and analyze portfolio performance with precision.
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -281,7 +431,7 @@ export const StockAssets = () => {
               placeholder="Filter holdings..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-xs text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-xs text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-sans"
             />
           </div>
           <Button 
@@ -294,67 +444,54 @@ export const StockAssets = () => {
         </div>
       </div>
 
-      {/* Stats Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
         <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 text-violet-500/10 group-hover:scale-110 transition-transform">
             <Briefcase size={48} />
           </div>
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Portfolio Value</p>
-          <h3 className="text-5xl font-black text-white tracking-tighter mb-1">{formatCurrency(stats.totalValue)}</h3>
-          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Total Net Asset Value</p>
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4 font-sans">Portfolio Value</p>
+          <h3 className="text-5xl font-black text-white tracking-tighter mb-1 font-sans">{formatCurrency(stats.totalValue)}</h3>
+          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest font-sans">Aggregate Market Value</p>
         </Card>
 
         <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 text-white/5 group-hover:scale-110 transition-transform">
             <TrendingUp size={48} />
           </div>
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Total Unrealized P/L</p>
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4 font-sans">Unrealized P/L</p>
           <div className="flex items-center gap-3 mb-1">
             <h3 className={cn(
-              "text-5xl font-black tracking-tighter",
+              "text-5xl font-black tracking-tighter font-sans",
               stats.unrealizedProfit >= 0 ? "text-emerald-400" : "text-rose-400"
             )}>
               {stats.unrealizedProfit >= 0 ? "+" : ""}{formatCurrency(stats.unrealizedProfit)}
             </h3>
             <div className={cn(
-              "px-2 py-1 rounded-lg text-[10px] font-black",
+              "px-2 py-1 rounded-lg text-[10px] font-black font-sans",
               stats.unrealizedProfit >= 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
             )}>
               {stats.profitPercentage.toFixed(2)}%
             </div>
           </div>
-          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Open Positions Performance</p>
+          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest font-sans">Active Position Performance</p>
         </Card>
 
-        <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 text-emerald-500/5 group-hover:scale-110 transition-transform">
+        <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group text-right">
+          <div className="absolute top-0 right-0 p-8 text-emerald-500/10 group-hover:scale-110 transition-transform origin-right">
             <CheckCircle2 size={48} />
           </div>
-          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Realized Profit/Loss</p>
+          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4 font-sans">Realized Gains</p>
           <h3 className={cn(
-            "text-5xl font-black tracking-tighter mb-1",
+            "text-5xl font-black tracking-tighter mb-1 font-sans",
             stats.realizedProfit >= 0 ? "text-emerald-400" : "text-rose-400"
           )}>
             {stats.realizedProfit >= 0 ? "+" : ""}{formatCurrency(stats.realizedProfit)}
           </h3>
-          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Captured Profits from Sales</p>
+          <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest font-sans">Exited Position Profit</p>
         </Card>
-
-        <div className="grid grid-cols-2 gap-6">
-          <Card className="p-8 bg-white/[0.02] border-white/5 flex flex-col justify-center">
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-2">Total Cost</p>
-            <h4 className="text-2xl font-bold text-white/60 tracking-tight">{formatCurrency(stats.totalCost)}</h4>
-          </Card>
-          <Card className="p-8 bg-white/[0.02] border-white/5 flex flex-col justify-center">
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-2">Holdings</p>
-            <h4 className="text-2xl font-bold text-white/60 tracking-tight">{stockAssets.length} Tickers</h4>
-          </Card>
-        </div>
       </div>
 
-      {/* Portfolio Table */}
-      <Card className="bg-white/[0.02] border-white/5 rounded-[32px] overflow-hidden">
+      <Card className="bg-white/[0.02] border-white/5 rounded-[32px] overflow-hidden font-sans">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -365,100 +502,17 @@ export const StockAssets = () => {
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Price</th>
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Unrealized</th>
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Realized</th>
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-center">Actions</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {stockAssets.map((asset) => {
-                const marketValue = asset.quantity * asset.currentPrice;
-                const costBasis = asset.quantity * asset.purchasePrice;
-                const gl = marketValue - costBasis;
-                const glPercent = costBasis > 0 ? (gl / costBasis) * 100 : 0;
-
-                return (
-                  <tr key={asset.id} className="hover:bg-white/[0.01] transition-colors group">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-[14px] bg-white/[0.02] border border-white/5 text-white/40 flex items-center justify-center font-black text-xs uppercase">
-                          {asset.ticker?.substring(0, 2) || "??"}
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-white tracking-tight uppercase">{asset.ticker}</p>
-                          <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-none mt-1 truncate max-w-[120px]">{asset.name}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-bold text-white tracking-tighter">{asset.quantity.toLocaleString()}</p>
-                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Shares Held</p>
-                    </td>
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-bold text-white/40 tracking-tighter">{formatCurrency(asset.purchasePrice)}</p>
-                    </td>
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-black text-white tracking-tighter">{formatCurrency(asset.currentPrice)}</p>
-                      <UpdatePriceButton id={asset.id} currentPrice={asset.currentPrice} />
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col">
-                        {asset.quantity > 0 ? (
-                          <>
-                            <p className={cn(
-                              "text-sm font-black tracking-tighter",
-                              gl >= 0 ? "text-emerald-400" : "text-rose-400"
-                            )}>
-                              {gl >= 0 ? "+" : ""}{formatCurrency(gl)}
-                            </p>
-                            <p className={cn(
-                              "text-[9px] font-black uppercase tracking-widest mt-0.5",
-                              gl >= 0 ? "text-emerald-500/30" : "text-rose-500/30"
-                            )}>
-                              {gl >= 0 ? "+" : ""}{glPercent.toFixed(2)}%
-                            </p>
-                          </>
-                        ) : (
-                          <span className="text-[10px] text-white/10 font-bold uppercase">No Open Pos</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col">
-                        <p className={cn(
-                          "text-sm font-black tracking-tighter",
-                          (asset.realizedPnL || 0) >= 0 ? "text-emerald-400" : "text-rose-400"
-                        )}>
-                          {(asset.realizedPnL || 0) >= 0 ? "+" : ""}{formatCurrency(asset.realizedPnL || 0)}
-                        </p>
-                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Total Realized</p>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex items-center justify-center gap-2">
-                        <PositionManager asset={asset} />
-                        <button 
-                          onClick={() => removeAsset(asset.id)}
-                          className="w-10 h-10 rounded-xl bg-white/5 text-white/20 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
-                          title="Remove holding"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {stockAssets.map((asset) => (
+                <StockAssetRow key={asset.id} asset={asset} removeAsset={removeAsset} />
+              ))}
               {stockAssets.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-8 py-20 text-center">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-16 h-16 rounded-3xl bg-white/[0.02] flex items-center justify-center text-white/5">
-                        <TrendingUp size={32} />
-                      </div>
-                      <div>
-                        <p className="text-lg font-bold text-white/40 tracking-tight">Empty Portfolio</p>
-                        <p className="text-xs text-white/20">Add your first equity holding to start tracking.</p>
-                      </div>
-                    </div>
+                    <p className="text-white/20 text-sm font-medium">No stock holdings found in this ledger.</p>
                   </td>
                 </tr>
               )}
@@ -467,7 +521,6 @@ export const StockAssets = () => {
         </div>
       </Card>
 
-      {/* Add Stock Modal */}
       <AnimatePresence>
         {isAdding && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
@@ -482,35 +535,35 @@ export const StockAssets = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl font-sans"
             >
               <div className="p-8 border-b border-white/5 flex items-center justify-between bg-violet-600/5">
                 <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight">Buy Equity Listing</h3>
-                  <p className="text-xs text-white/40">Enter listing details to analyze portfolio weights.</p>
+                  <h3 className="text-xl font-bold text-white tracking-tight">Add New Holding</h3>
+                  <p className="text-xs text-white/40">Enter the details of your equity position.</p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-violet-500/10 text-violet-400 flex items-center justify-center">
-                  <BarChart4 size={20} />
+                  <Briefcase size={20} />
                 </div>
               </div>
 
               <form onSubmit={handleSubmit} className="p-8 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Ticker Symbol</label>
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1 font-sans">Ticker Symbol</label>
                     <input 
                       autoFocus
                       placeholder="e.g., AAPL"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all placeholder:uppercase"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-sans"
                       value={newAsset.ticker}
                       onChange={(e) => setNewAsset({ ...newAsset, ticker: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Full Company Name</label>
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1 font-sans">Company Name</label>
                     <input 
-                      placeholder="e.g., Apple Inc"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                      placeholder="e.g., Apple Inc."
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-sans"
                       value={newAsset.name}
                       onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
                     />
@@ -519,33 +572,33 @@ export const StockAssets = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Total Shares</label>
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1 font-sans">Quantity (Shares)</label>
                     <input 
-                      type="number" step="0.0001"
+                      type="number" step="0.01"
                       placeholder="0.00"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-sans"
                       value={newAsset.quantity}
                       onChange={(e) => setNewAsset({ ...newAsset, quantity: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Current Price</label>
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1 font-sans">Current Price</label>
                     <input 
                       type="number"
                       placeholder="0.00"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all font-sans"
                       value={newAsset.currentPrice}
                       onChange={(e) => setNewAsset({ ...newAsset, currentPrice: e.target.value })}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2 text-center p-6 rounded-2xl bg-white/[0.02] border border-white/5">
-                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Average Purchase Price</p>
+                <div className="space-y-2 text-center p-6 rounded-2xl bg-white/[0.02] border border-white/5 font-sans">
+                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Purchase Price (Average)</p>
                   <input 
                     type="number"
                     placeholder="0.00"
-                    className="w-full bg-transparent border-0 text-center text-2xl font-black text-white focus:outline-none placeholder:text-white/10"
+                    className="w-full bg-transparent border-0 text-center text-2xl font-black text-white focus:outline-none font-sans"
                     value={newAsset.purchasePrice}
                     onChange={(e) => setNewAsset({ ...newAsset, purchasePrice: e.target.value })}
                   />
@@ -555,15 +608,15 @@ export const StockAssets = () => {
                   <Button 
                     type="button"
                     onClick={() => setIsAdding(false)}
-                    className="flex-1 bg-white/5 hover:bg-white/10 text-white border-0 h-14 rounded-2xl text-[10px] uppercase font-bold tracking-widest"
+                    className="flex-1 bg-white/5 hover:bg-white/10 text-white border-0 h-14 rounded-2xl text-[10px] uppercase font-bold tracking-widest font-sans"
                   >
                     Cancel
                   </Button>
                   <Button 
                     type="submit"
-                    className="flex-[2] bg-violet-600 hover:bg-violet-700 text-white border-0 h-14 rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-violet-600/20"
+                    className="flex-[2] bg-violet-600 hover:bg-violet-700 text-white border-0 h-14 rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-violet-600/20 font-sans"
                   >
-                    Add to Portfolio
+                    Confirm Purchase
                   </Button>
                 </div>
               </form>
@@ -581,7 +634,7 @@ export const StockAssets = () => {
             className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200]"
           >
             <div className="bg-violet-600 text-white px-6 py-4 rounded-[24px] shadow-2xl shadow-violet-600/20 flex items-center gap-4 border border-violet-400/20">
-              <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
                 <CheckCircle2 size={16} />
               </div>
               <p className="text-xs font-black uppercase tracking-widest">{successToast}</p>

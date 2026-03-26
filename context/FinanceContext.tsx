@@ -21,7 +21,8 @@ export interface Transaction {
   category: string;
   description: string;
   date: string;
-  debtId?: number;
+  debtId?: number | null;
+  assetId?: number | null;
 }
 
 export interface Debt {
@@ -62,6 +63,7 @@ export interface Asset {
   realizedPnL: number;
   purity?: number;
   date: string;
+  transactions?: Transaction[];
 }
 
 export interface Allocation {
@@ -131,64 +133,70 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     init();
   }, []);
 
+  const fetchData = async () => {
+    if (!currentLedgerId) return;
+    const [dbTransactions, dbDebts, dbAssets, dbAllocations] = await Promise.all([
+      getTransactions(currentLedgerId),
+      getDebts(currentLedgerId),
+      getAssets(currentLedgerId),
+      getAllocations(currentLedgerId)
+    ]);
+    
+    setTransactions(dbTransactions.map((t: any) => ({
+      ...t,
+      amount: parseFloat(t.amount.toString()),
+      type: t.type as TransactionType,
+      date: t.date.toISOString(),
+      debtId: t.debtId || null,
+      assetId: t.assetId || null
+    })));
+    
+    setDebts(dbDebts.map((d: any) => ({
+      ...d,
+      amount: parseFloat(d.amount.toString()),
+      interestRate: parseFloat(d.interestRate?.toString() || "0"),
+      period: d.period || 0,
+      processingFee: parseFloat(d.processingFee?.toString() || "0"),
+      type: d.type as any,
+      status: d.status as any,
+      startDate: d.startDate?.toISOString(),
+      weight: parseFloat(d.weight?.toString() || "0"),
+      purity: d.purity || undefined,
+      isGoldLoan: d.isGoldLoan || false,
+      remainingPrincipal: parseFloat(d.remainingPrincipal?.toString() || "0"),
+    })));
+
+    setAssets(dbAssets.map((a: any) => ({
+      ...a,
+      type: a.type as "gold" | "stock" | "crypto",
+      ticker: a.ticker || undefined,
+      quantity: parseFloat(a.quantity.toString()),
+      purchasePrice: parseFloat(a.purchasePrice?.toString() || "0"),
+      currentPrice: parseFloat(a.currentPrice?.toString() || "0"),
+      realizedPnL: parseFloat(a.realizedPnL?.toString() || "0"),
+      purity: a.purity ? parseFloat(a.purity.toString()) : undefined,
+      date: a.date?.toISOString(),
+      transactions: (a.transactions || []).map((t: any) => ({
+        ...t,
+        amount: parseFloat(t.amount.toString()),
+        type: t.type as TransactionType,
+        date: t.date.toISOString(),
+      }))
+    })));
+
+    setAllocations(dbAllocations.map((al: any) => ({
+      ...al,
+      amount: parseFloat(al.amount.toString()),
+      quantity: parseFloat(al.quantity?.toString() || "1"),
+      unit: al.unit || "unit",
+      targetDay: al.targetDay || undefined,
+      createdAt: al.createdAt?.toISOString()
+    })));
+  };
+
   // Fetch data for current ledger
   useEffect(() => {
-    if (currentLedgerId) {
-      const fetchData = async () => {
-        const [dbTransactions, dbDebts, dbAssets, dbAllocations] = await Promise.all([
-          getTransactions(currentLedgerId),
-          getDebts(currentLedgerId),
-          getAssets(currentLedgerId),
-          getAllocations(currentLedgerId)
-        ]);
-        
-        setTransactions(dbTransactions.map((t: any) => ({
-          ...t,
-          amount: parseFloat(t.amount.toString()),
-          type: t.type as TransactionType,
-          date: t.date.toISOString(),
-          debtId: t.debtId || undefined
-        })));
-        
-        setDebts(dbDebts.map((d: any) => ({
-          ...d,
-          amount: parseFloat(d.amount.toString()),
-          interestRate: parseFloat(d.interestRate?.toString() || "0"),
-          period: d.period || 0,
-          processingFee: parseFloat(d.processingFee?.toString() || "0"),
-          type: d.type as any,
-          status: d.status as any,
-          startDate: d.startDate?.toISOString(),
-          weight: parseFloat(d.weight?.toString() || "0"),
-          purity: d.purity || undefined,
-          isGoldLoan: d.isGoldLoan || false,
-          remainingPrincipal: parseFloat(d.remainingPrincipal?.toString() || "0"),
-        })));
-
-
-        setAssets(dbAssets.map((a: any) => ({
-          ...a,
-          type: a.type as "gold" | "stock" | "crypto",
-          ticker: a.ticker || undefined,
-          quantity: parseFloat(a.quantity.toString()),
-          purchasePrice: parseFloat(a.purchasePrice?.toString() || "0"),
-          currentPrice: parseFloat(a.currentPrice?.toString() || "0"),
-          realizedPnL: parseFloat(a.realizedPnL?.toString() || "0"),
-          purity: a.purity ? parseFloat(a.purity.toString()) : undefined,
-          date: a.date?.toISOString()
-        })));
-
-        setAllocations(dbAllocations.map((al: any) => ({
-          ...al,
-          amount: parseFloat(al.amount.toString()),
-          quantity: parseFloat(al.quantity?.toString() || "1"),
-          unit: al.unit || "unit",
-          targetDay: al.targetDay || undefined,
-          createdAt: al.createdAt?.toISOString()
-        })));
-      };
-      fetchData();
-    }
+    fetchData();
   }, [currentLedgerId]);
 
   const addLedger = async (ledger: Omit<Ledger, "id">) => {
@@ -206,106 +214,61 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const removeLedger = async (id: number) => {
     await dbDeleteLedger(id);
     setLedgers(ledgers.filter((l) => l.id !== id));
-    if (currentLedgerId === id && ledgers.length > 1) {
-      setCurrentLedgerId(ledgers.filter((l) => l.id !== id)[0].id);
-    } else if (currentLedgerId === id) {
-      setCurrentLedgerId(null);
-    }
   };
 
   const addTransaction = async (transaction: Omit<Transaction, "id" | "ledgerId">) => {
     if (!currentLedgerId) return;
-    const newDbTransaction = await dbAddTransaction({
+    await dbAddTransaction({
       ...transaction,
       ledgerId: currentLedgerId,
       amount: transaction.amount.toString()
     });
-    
-    const formattedTransaction: Transaction = {
-      ...newDbTransaction,
-      id: Number(newDbTransaction.id),
-      ledgerId: Number(newDbTransaction.ledgerId),
-      amount: parseFloat(newDbTransaction.amount.toString()),
-      type: newDbTransaction.type as TransactionType,
-      date: newDbTransaction.date.toISOString(),
-      debtId: newDbTransaction.debtId || undefined
-    };
-    
-    setTransactions([formattedTransaction, ...transactions]);
+    await fetchData();
   };
 
   const removeTransaction = async (id: number) => {
     await dbDeleteTransaction(id);
-    setTransactions(transactions.filter((t) => t.id !== id));
+    await fetchData();
   };
 
   const addDebt = async (debt: Omit<Debt, "id" | "ledgerId">) => {
     if (!currentLedgerId) return;
-    const newDbDebt = await dbAddDebt({
+    await dbAddDebt({
       ...debt,
       ledgerId: currentLedgerId,
       amount: debt.amount.toString()
     });
-    
-    const formattedDebt: Debt = {
-      ...newDbDebt,
-      id: Number(newDbDebt.id),
-      ledgerId: Number(newDbDebt.ledgerId),
-      amount: parseFloat(newDbDebt.amount.toString()),
-      interestRate: parseFloat(newDbDebt.interestRate?.toString() || "0"),
-      period: newDbDebt.period || 0,
-      processingFee: parseFloat(newDbDebt.processingFee?.toString() || "0"),
-      type: newDbDebt.type as any,
-      status: newDbDebt.status as any,
-      startDate: newDbDebt.startDate?.toISOString() || new Date().toISOString(),
-      weight: parseFloat(newDbDebt.weight?.toString() || "0"),
-      purity: newDbDebt.purity || undefined,
-      isGoldLoan: newDbDebt.isGoldLoan || false,
-      remainingPrincipal: parseFloat(newDbDebt.amount?.toString() || "0"), // New debt starts with full amount
-    };
-    
-    setDebts([formattedDebt, ...debts]);
+    await fetchData();
   };
 
   const removeDebt = async (id: number) => {
     await dbDeleteDebt(id);
-    setDebts(debts.filter((d) => d.id !== id));
+    await fetchData();
   };
 
   const updateDebtStatus = async (id: number, status: Debt["status"]) => {
     await dbUpdateDebtStatus(id, status);
-    setDebts(debts.map((d) => (d.id === id ? { ...d, status } : d)));
+    await fetchData();
   };
 
 
   const addAsset = async (asset: Omit<Asset, "id" | "ledgerId">) => {
     if (!currentLedgerId) return;
-    const newDbAsset = await dbAddAsset({
+    await dbAddAsset({
       ...asset,
       ledgerId: currentLedgerId
     });
-    
-    setAssets([{
-      ...newDbAsset,
-      type: newDbAsset.type as "gold" | "stock" | "crypto",
-      ticker: newDbAsset.ticker || undefined,
-      quantity: parseFloat(newDbAsset.quantity.toString()),
-      purchasePrice: parseFloat(newDbAsset.purchasePrice?.toString() || "0"),
-      currentPrice: parseFloat(newDbAsset.currentPrice?.toString() || "0"),
-      realizedPnL: parseFloat(newDbAsset.realizedPnL?.toString() || "0"),
-      purity: newDbAsset.purity ? parseFloat(newDbAsset.purity.toString()) : undefined,
-      date: newDbAsset.date?.toISOString() || new Date().toISOString()
-    }, ...assets]);
+    await fetchData();
   };
 
   const removeAsset = async (id: number) => {
     await dbDeleteAsset(id);
-    setAssets(assets.filter((a) => a.id !== id));
+    await fetchData();
   };
 
   const updateAssetPrice = async (id: number, price: number) => {
     await dbUpdateAssetPrice(id, price);
-    setAssets(assets.map((a) => (a.id === id ? { ...a, currentPrice: price } : a)));
+    await fetchData();
   };
 
   const adjustAssetPosition = async (id: number, quantityChange: number, price: number) => {
@@ -330,40 +293,34 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const newRealizedPnL = (asset.realizedPnL || 0) + profitFromSale;
 
     await dbUpdateAssetPosition(id, newQuantity, newAvgCost, newRealizedPnL);
-    setAssets(assets.map((a) => (a.id === id ? { 
-      ...a, 
-      quantity: newQuantity, 
-      purchasePrice: newAvgCost,
-      realizedPnL: newRealizedPnL
-    } : a)));
+
+    // Record the financial transaction
+    const totalCashFlow = Math.abs(quantityChange * price);
+    await dbAddTransaction({
+      ledgerId: currentLedgerId!,
+      type: quantityChange > 0 ? "expense" : "income",
+      amount: totalCashFlow,
+      category: "Asset Adjustment",
+      description: `${quantityChange > 0 ? "Purchase" : "Sale"} of ${asset.ticker || asset.name}`,
+      date: new Date().toISOString(),
+      assetId: id
+    });
+
+    await fetchData(); 
   };
 
   const addAllocation = async (allocation: Omit<Allocation, "id" | "ledgerId" | "createdAt">) => {
     if (!currentLedgerId) return;
-    const result = await dbAddAllocation({
+    await dbAddAllocation({
       ...allocation,
       ledgerId: currentLedgerId
     });
-    
-    if (result && "error" in result) {
-      console.error("Context allocation error:", result.error);
-      return;
-    }
-
-    setAllocations([{
-      ...result,
-      type: result.type as "fixed" | "commodity",
-      amount: parseFloat(result.amount.toString()),
-      quantity: parseFloat(result.quantity?.toString() || "1"),
-      unit: result.unit || "unit",
-      targetDay: result.targetDay || undefined,
-      createdAt: result.createdAt?.toISOString() || new Date().toISOString()
-    }, ...allocations]);
+    await fetchData();
   };
 
   const removeAllocation = async (id: number) => {
     await dbDeleteAllocation(id);
-    setAllocations(allocations.filter((a) => a.id !== id));
+    await fetchData();
   };
 
   return (
@@ -371,10 +328,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       value={{
         ledgers,
         currentLedgerId,
-        transactions: transactions.filter((t) => t.ledgerId === currentLedgerId),
-        debts: debts.filter((d) => d.ledgerId === currentLedgerId),
-        assets: assets.filter((a) => a.ledgerId === currentLedgerId),
-        allocations: allocations.filter((al) => al.ledgerId === currentLedgerId),
+        transactions,
+        debts,
+        assets,
+        allocations,
         setCurrentLedgerId,
         addLedger,
         removeLedger,
@@ -392,9 +349,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateGoldPrice: async (price24k: number) => {
           if (!currentLedgerId) return;
           await dbUpdateGoldPrice(currentLedgerId, price24k);
-          setLedgers(prev => prev.map(l => 
-            l.id === currentLedgerId ? { ...l, goldPrice24k: price24k } : l
-          ));
+          await fetchData();
         }
       }}
     >

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useFinance, Asset } from "@/context/FinanceContext";
+import { useFinance, Asset, Transaction } from "@/context/FinanceContext";
 import { Card, Button, Badge } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 import { 
@@ -12,15 +12,58 @@ import {
   Scale,
   Gem,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Calendar,
+  ArrowUpRight,
+  ArrowDownRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+
+const AssetTransactions = ({ asset }: { asset: Asset }) => {
+  if (!asset.transactions || asset.transactions.length === 0) return (
+    <div className="py-4 text-center opacity-20 text-[10px] font-bold uppercase tracking-widest bg-white/[0.01] rounded-xl mt-4">
+      No transaction history
+    </div>
+  );
+
+  return (
+    <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-4 mt-6 divide-y divide-white/5 relative z-10 font-sans">
+      <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-3 px-1">Transaction Log</p>
+      {asset.transactions.map((t) => (
+        <div key={t.id} className="flex items-center justify-between py-2.5 text-[10px]">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-6 h-6 rounded-lg flex items-center justify-center",
+              t.type === "income" ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+            )}>
+              {t.type === "income" ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            </div>
+            <div>
+              <p className="font-bold text-white uppercase tracking-tight">{t.description}</p>
+              <div className="flex items-center gap-2 opacity-40">
+                <Calendar size={8} /> 
+                <span>{new Date(t.date).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+          <p className={cn(
+            "font-black tracking-tight",
+            t.type === "income" ? "text-emerald-400" : "text-white"
+          )}>
+            {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount)}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export const GoldAssets = () => {
   const { assets, addAsset, removeAsset, updateGoldPrice, ledgers, currentLedgerId, debts } = useFinance();
   const [isAdding, setIsAdding] = useState(false);
   const [isSettingRate, setIsSettingRate] = useState(false);
+  const [expandedAssetId, setExpandedAssetId] = useState<number | null>(null);
   
   const currentLedger = ledgers.find(l => l.id === currentLedgerId);
   const goldSpotPrice24k = currentLedger?.goldPrice24k || 0;
@@ -56,55 +99,55 @@ export const GoldAssets = () => {
     const totalValue = goldAssets.reduce((acc, a) => acc + (a.quantity * goldSpotPrice24k * (a.purity || 24) / 24), 0);
     const totalCost = goldAssets.reduce((acc, a) => acc + (a.purchasePrice * a.quantity), 0);
     const profit = totalValue - totalCost;
+    
     return { totalWeight, totalValue, totalCost, profit };
   }, [goldAssets, goldSpotPrice24k]);
-
-  const handleSetRate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const rate = parseFloat(pawnRate);
-    if (isNaN(rate)) return;
-    
-    // Calculate 24k per gram from 1 Pawn (8g) 22k
-    // 22k price per g = rate / 8
-    // 24k price per g = (rate / 8) * (24 / 22)
-    const price24k = (rate / 8) * (24 / 22);
-    
-    await updateGoldPrice(price24k);
-    setSuccessToast("Market Rate Synchronized");
-    setIsSettingRate(false);
-    setPawnRate("");
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAsset.name || !newAsset.quantity) return;
     
-    const pur = parseFloat(newAsset.purity) || 24;
-    const currentPrice = goldSpotPrice24k * (pur / 24);
+    const qty = parseFloat(newAsset.quantity);
+    const purchasePrice = parseFloat(newAsset.purchasePrice) || (goldSpotPrice24k * (parseInt(newAsset.purity) / 24));
 
     await addAsset({
       name: newAsset.name,
-      quantity: parseFloat(newAsset.quantity),
-      purchasePrice: newAsset.purchasePrice 
-        ? parseFloat(newAsset.purchasePrice) / (parseFloat(newAsset.quantity) || 1)
-        : currentPrice, // Default cost to current market if not specified
-      currentPrice: currentPrice,
-      realizedPnL: 0,
-      purity: pur,
+      quantity: qty,
+      purchasePrice: purchasePrice,
+      currentPrice: goldSpotPrice24k * (parseInt(newAsset.purity) / 24),
       type: "gold",
+      purity: parseInt(newAsset.purity),
+      realizedPnL: 0,
       date: new Date().toISOString()
     });
     
-    setSuccessToast("Gold asset secure in vault");
+    setSuccessToast(`${newAsset.name} secured in vault`);
     setNewAsset({ name: "", quantity: "", purchasePrice: "", purity: "22", type: "gold" });
     setIsAdding(false);
+  };
+
+  const handleSetRate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const rate = parseFloat(pawnRate);
+    if (isNaN(rate) || rate <= 0) return;
+    
+    // Convert Pawn rate (per 8g 22k) back to 24k per gram
+    // rate = Gram24kPrice * (22/24) * 8
+    const pricePerGram24k = rate / (8 * (22/24));
+    
+    await updateGoldPrice(pricePerGram24k);
+    setSuccessToast("Market calibration successful");
+    setPawnRate("");
+    setIsSettingRate(false);
   };
 
   const container = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: 0.1 }
+      transition: {
+        staggerChildren: 0.1
+      }
     }
   };
 
@@ -114,7 +157,7 @@ export const GoldAssets = () => {
   };
 
   return (
-    <div className="p-8 pb-32 max-w-[1600px] mx-auto">
+    <div className="p-8 pb-32 max-w-[1600px] mx-auto font-sans">
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-8 mb-12">
         <div>
           <h2 className="text-5xl font-black text-white tracking-tighter mb-4 flex items-center gap-4">
@@ -125,7 +168,7 @@ export const GoldAssets = () => {
               Technical analysis of physical holdings calibrated to market valuations.
             </p>
             {goldSpotPrice24k > 0 && (
-              <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 px-4 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">
+              <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 px-4 py-1 rounded-full text-[10px] font-black tracking-widest uppercase font-sans">
                 SPOT: {formatCurrency(goldSpotPrice24k * (22/24) * 8)} / PAWN (22K)
               </Badge>
             )}
@@ -134,14 +177,14 @@ export const GoldAssets = () => {
         <div className="flex flex-col sm:flex-row gap-4">
           <Button 
             onClick={() => setIsSettingRate(true)}
-            className="bg-white/5 hover:bg-white/10 text-white border-0 h-14 px-8 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] transition-all"
+            className="bg-white/5 hover:bg-white/10 text-white border-0 h-14 px-8 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] transition-all font-sans"
           >
             <TrendingUp size={18} className="mr-2 text-amber-500" />
             Set Market Rate
           </Button>
           <Button 
             onClick={() => setIsAdding(true)}
-            className="bg-amber-500 hover:bg-amber-600 text-black border-0 h-14 px-8 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] shadow-2xl shadow-amber-500/20 transition-all hover:scale-105 active:scale-95"
+            className="bg-amber-500 hover:bg-amber-600 text-black border-0 h-14 px-8 rounded-2xl text-[10px] uppercase font-black tracking-[0.2em] shadow-2xl shadow-amber-500/20 transition-all hover:scale-105 active:scale-95 font-sans"
           >
             <Plus size={18} className="mr-2" />
             Secure New Asset
@@ -149,7 +192,6 @@ export const GoldAssets = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 text-amber-500/10 group-hover:scale-110 transition-transform">
@@ -157,15 +199,15 @@ export const GoldAssets = () => {
           </div>
           <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Gross Volumetric Weight</p>
           <h3 className="text-4xl font-black text-white tracking-tighter mb-2">{stats.totalWeight.toFixed(2)}g</h3>
-          <p className="text-[10px] text-amber-400/60 font-medium">Incl. {pledgedWeight.toFixed(2)}g pledged as collateral</p>
+          <p className="text-[10px] text-amber-400/60 font-medium font-sans">Incl. {pledgedWeight.toFixed(2)}g collateral</p>
         </Card>
 
-        <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 text-emerald-500/10 group-hover:scale-110 transition-transform">
+        <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group text-right">
+          <div className="absolute top-0 right-0 p-8 text-emerald-500/10 group-hover:scale-110 transition-transform origin-right">
             <TrendingUp size={48} />
           </div>
           <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Market Valuation</p>
-          <h3 className="text-4xl font-black text-white tracking-tighter mb-1">{formatCurrency(stats.totalValue)}</h3>
+          <h3 className="text-4xl font-black text-white tracking-tighter mb-1 font-sans">{formatCurrency(stats.totalValue)}</h3>
           <p className="text-[10px] text-emerald-400/60 font-medium uppercase tracking-widest">Aggregate Liquid Assets</p>
         </Card>
 
@@ -175,18 +217,17 @@ export const GoldAssets = () => {
         )}>
           <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Unrealized Growth</p>
           <h3 className={cn(
-            "text-4xl font-black tracking-tighter mb-1",
+            "text-4xl font-black tracking-tighter mb-1 font-sans",
             stats.profit >= 0 ? "text-emerald-400" : "text-rose-400"
           )}>
             {stats.profit >= 0 ? "+" : ""}{formatCurrency(stats.profit)}
           </h3>
-          <p className="text-[10px] font-medium uppercase tracking-widest opacity-60">
+          <p className="text-[10px] font-medium uppercase tracking-widest opacity-60 font-sans">
             {((stats.profit / (stats.totalCost || 1)) * 100).toFixed(2)}% ROI
           </p>
         </Card>
       </div>
 
-      {/* Asset List */}
       <motion.div 
         variants={container}
         initial="hidden"
@@ -198,14 +239,20 @@ export const GoldAssets = () => {
             const currentPriceForPurity = goldSpotPrice24k * (asset.purity || 24) / 24;
             const valuation = asset.quantity * currentPriceForPurity;
             const purchaseValue = asset.quantity * asset.purchasePrice;
-            const netFine = asset.quantity * (asset.purity || 24) / 24;
+            const isExpanded = expandedAssetId === asset.id;
             
             return (
               <motion.div key={asset.id} layout variants={item}>
-                <Card className="p-8 bg-white/[0.02] border-white/5 hover:border-amber-500/20 transition-all group relative overflow-hidden">
+                <Card className={cn(
+                  "p-8 bg-white/[0.02] border-white/5 hover:border-amber-500/20 transition-all group relative overflow-hidden font-sans",
+                  isExpanded && "border-amber-500/30 ring-1 ring-amber-500/10"
+                )}>
                   <div className="flex items-start justify-between mb-8 relative z-10">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                      <div className={cn(
+                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
+                        isExpanded ? "bg-amber-500 text-black" : "bg-amber-500/10 text-amber-500"
+                      )}>
                         <Gem size={20} />
                       </div>
                       <div>
@@ -218,34 +265,46 @@ export const GoldAssets = () => {
                         </div>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => removeAsset(asset.id)}
-                      className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                       <button 
+                        onClick={() => setExpandedAssetId(isExpanded ? null : asset.id)}
+                        className={cn(
+                          "w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                          isExpanded ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20" : "bg-white/5 text-white/30 hover:text-white"
+                        )}
+                        title="History"
+                      >
+                        <History size={14} />
+                      </button>
+                      <button 
+                        onClick={() => removeAsset(asset.id)}
+                        className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-8 mb-8 relative z-10">
+                  <div className="grid grid-cols-2 gap-8 mb-8 relative z-10 font-sans">
                     <div>
                       <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Gross Weight</p>
-                      <p className="text-3xl font-black text-white tracking-tighter">{asset.quantity}g</p>
+                      <p className="text-3xl font-black text-white tracking-tighter">{asset.quantity}<span className="text-lg ml-1 font-bold text-white/20">g</span></p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Market Valuation</p>
-                      <p className="text-3xl font-black text-amber-400 tracking-tighter">{formatCurrency(valuation)}</p>
+                    <div className="text-right font-sans">
+                      <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1 font-sans">Current Value</p>
+                      <p className="text-3xl font-black text-amber-400 tracking-tighter font-sans">{formatCurrency(valuation)}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] relative z-10">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] relative z-10 border border-white/5 font-sans">
                     <div className="space-y-1">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">Current Spot/g</p>
-                      <p className="text-xs font-bold text-white/60">{formatCurrency(currentPriceForPurity)}</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">Spot per Gram</p>
+                      <p className="text-xs font-bold text-white/60 font-sans">{formatCurrency(currentPriceForPurity)}</p>
                     </div>
                     <div className="text-right space-y-1">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">Growth/Depreciation</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">Floating P/L</p>
                       <p className={cn(
-                        "text-xs font-black",
+                        "text-xs font-black font-sans",
                         valuation >= purchaseValue ? "text-emerald-400" : "text-rose-400"
                       )}>
                         {valuation >= purchaseValue ? "+" : ""}
@@ -253,6 +312,19 @@ export const GoldAssets = () => {
                       </p>
                     </div>
                   </div>
+
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <AssetTransactions asset={asset} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </Card>
               </motion.div>
             );
@@ -275,12 +347,12 @@ export const GoldAssets = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl font-sans"
             >
               <div className="p-8 border-b border-white/5 flex items-center justify-between bg-amber-500/5">
                 <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight">Secure Gold Asset</h3>
-                  <p className="text-xs text-white/40">Secure a new physical gold entry with technical specs.</p>
+                  <h3 className="text-xl font-bold text-white tracking-tight">Onboard Physical Gold</h3>
+                  <p className="text-xs text-white/40">Calibrate your physical assets for market tracking.</p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
                   <Gem size={20} />
@@ -289,71 +361,70 @@ export const GoldAssets = () => {
 
               <form onSubmit={handleSubmit} className="p-8 space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Asset Nomenclature</label>
+                  <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1 font-sans">Asset Description</label>
                   <input 
                     autoFocus
-                    placeholder="e.g., 22k Sovereign Coin"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                    placeholder="e.g., 22k Gold Necklace"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all font-sans"
                     value={newAsset.name}
                     onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 font-sans">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Gross Weight (g)</label>
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1 font-sans">Gross Mass (Grams)</label>
                     <input 
                       type="number" step="0.001"
                       placeholder="0.000"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all font-sans"
                       value={newAsset.quantity}
                       onChange={(e) => setNewAsset({ ...newAsset, quantity: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Purity (Karats)</label>
+                  <div className="space-y-2 font-sans">
+                    <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1 font-sans">Gold Purity</label>
                     <select 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all appearance-none"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all appearance-none uppercase font-sans"
                       value={newAsset.purity}
                       onChange={(e) => setNewAsset({ ...newAsset, purity: e.target.value })}
                     >
-                      <option value="24" className="bg-[#0A0A0A]">24k (Fine Gold)</option>
-                      <option value="22" className="bg-[#0A0A0A]">22k (Standard)</option>
-                      <option value="21" className="bg-[#0A0A0A]">21k</option>
-                      <option value="20" className="bg-[#0A0A0A]">20k</option>
-                      <option value="18" className="bg-[#0A0A0A]">18k</option>
-                      <option value="14" className="bg-[#0A0A0A]">14k</option>
+                      <option value="24" className="bg-[#0A0A0A]">24K (Pure Fine)</option>
+                      <option value="22" className="bg-[#0A0A0A]">22K (Standard)</option>
+                      <option value="21" className="bg-[#0A0A0A]">21K</option>
+                      <option value="20" className="bg-[#0A0A0A]">20K</option>
+                      <option value="18" className="bg-[#0A0A0A]">18K</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="space-y-2 text-center p-6 rounded-2xl bg-white/[0.02] border border-white/5">
-                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Total Acquisition Price (Whole Item)</p>
+                <div className="space-y-2 text-center p-6 rounded-2xl bg-white/[0.02] border border-white/5 font-sans">
+                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1 font-sans">Acquisition Cost (Total Paid)</p>
                   <input 
                     type="number"
-                    placeholder="Total amount paid"
-                    className="w-full bg-transparent border-0 text-center text-2xl font-black text-white focus:outline-none placeholder:text-white/10"
+                    placeholder="0.00"
+                    className="w-full bg-transparent border-0 text-center text-2xl font-black text-white focus:outline-none font-sans"
                     value={newAsset.purchasePrice}
                     onChange={(e) => setNewAsset({ ...newAsset, purchasePrice: e.target.value })}
                   />
-                  <p className="text-[9px] text-white/20 mt-2 font-medium">
-                    Leave empty to use current market value of {formatCurrency(goldSpotPrice24k * (parseFloat(newAsset.purity)/24) * (parseFloat(newAsset.quantity) || 0))}
+                  <p className="text-[9px] text-white/20 mt-2 font-medium font-sans">
+                    Defaults to {formatCurrency(goldSpotPrice24k * (parseFloat(newAsset.purity)/24) * (parseFloat(newAsset.quantity) || 0))} if zero.
                   </p>
                 </div>
 
-                <div className="flex gap-4 pt-4">
+                <div className="flex gap-4 pt-4 font-sans">
                   <Button 
                     type="button"
                     onClick={() => setIsAdding(false)}
-                    className="flex-1 bg-white/5 hover:bg-white/10 text-white border-0 h-14 rounded-2xl text-[10px] uppercase font-bold tracking-widest"
+                    className="flex-1 bg-white/5 hover:bg-white/10 text-white border-0 h-14 rounded-2xl text-[10px] uppercase font-bold tracking-widest font-sans"
                   >
                     Cancel
                   </Button>
                   <Button 
                     type="submit"
-                    className="flex-[2] bg-amber-500 hover:bg-amber-600 text-black border-0 h-14 rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-amber-500/20"
+                    className="flex-[2] bg-amber-500 hover:bg-amber-600 text-black border-0 h-14 rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-amber-500/20 font-sans"
                   >
-                    Secure Item
+                    Mint Asset
                   </Button>
                 </div>
               </form>
@@ -374,7 +445,7 @@ export const GoldAssets = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-[#0A0A0A] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-sm bg-[#0A0A0A] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl font-sans"
             >
               <div className="p-8 border-b border-white/5 flex items-center justify-between bg-emerald-500/5">
                 <div>
@@ -387,36 +458,34 @@ export const GoldAssets = () => {
               </div>
 
               <form onSubmit={handleSetRate} className="p-8 space-y-6">
-                <div className="space-y-4 text-center">
-                  <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">Price for 22 Carat 8 Grams (1 Pawn)</p>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1 font-sans">Current Pawn Rate (22K - 8g)</label>
                   <input 
-                    type="number"
                     autoFocus
+                    type="number"
                     placeholder="0.00"
-                    className="w-full bg-transparent border-0 text-center text-5xl font-black text-white focus:outline-none placeholder:text-white/5"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all font-sans"
                     value={pawnRate}
                     onChange={(e) => setPawnRate(e.target.value)}
                   />
-                  <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-                    <p className="text-[10px] text-white/20 font-medium leading-relaxed">
-                      We will automatically derive the 24k base rate and update all vault valuations.
-                    </p>
-                  </div>
+                  <p className="text-[9px] text-white/30 px-1 font-sans">
+                    The system will automatically extrapolate the pure gold value based on the standard 22K pawn rate.
+                  </p>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  <Button 
-                    type="submit"
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-black border-0 h-14 rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-emerald-500/20"
-                  >
-                    Calibrate Vault
-                  </Button>
+                <div className="flex gap-3 font-sans">
                   <Button 
                     type="button"
                     onClick={() => setIsSettingRate(false)}
-                    className="w-full bg-transparent hover:bg-white/5 text-white/40 border-0 h-10 text-[10px] uppercase font-bold tracking-widest"
+                    className="flex-1 bg-white/5 hover:bg-white/10 text-white border-0 h-14 rounded-2xl text-[10px] uppercase font-bold tracking-widest font-sans"
                   >
-                    Dismiss
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit"
+                    className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white border-0 h-14 rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-xl shadow-emerald-600/20 font-sans"
+                  >
+                    Update Valuation
                   </Button>
                 </div>
               </form>
@@ -431,13 +500,13 @@ export const GoldAssets = () => {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200]"
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] font-sans"
           >
-            <div className="bg-amber-500 text-black px-6 py-4 rounded-[24px] shadow-2xl shadow-amber-500/20 flex items-center gap-4 border border-amber-400/20">
-              <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center">
+            <div className="bg-amber-500 text-black px-6 py-4 rounded-[24px] shadow-2xl shadow-amber-500/20 flex items-center gap-4 border border-amber-400/20 font-sans">
+              <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center font-sans">
                 <CheckCircle2 size={16} />
               </div>
-              <p className="text-xs font-black uppercase tracking-widest">{successToast}</p>
+              <p className="text-xs font-black uppercase tracking-widest font-sans">{successToast}</p>
             </div>
           </motion.div>
         )}

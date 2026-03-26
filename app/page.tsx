@@ -22,7 +22,7 @@ export default function Home() {
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       
       <div className="flex-1 flex flex-col min-w-0">
-        {activeTab === "dashboard" && <Dashboard />}
+        {activeTab === "dashboard" && <Dashboard onViewAll={() => setActiveTab("transactions")} />}
         {activeTab === "debts" && <DebtTracker />}
         {activeTab === "gold_loans" && <GoldLoanTracker />}
         {activeTab === "gold_assets" && <GoldAssets />}

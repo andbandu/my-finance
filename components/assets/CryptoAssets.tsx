@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useFinance, Asset } from "@/context/FinanceContext";
+import { useFinance, Asset, Transaction } from "@/context/FinanceContext";
 import { Card, Button, Badge } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 import { 
@@ -14,11 +14,17 @@ import {
   Search,
   ArrowUpRight,
   ArrowDownRight,
-  Bitcoin
+  Bitcoin,
+  Edit3, 
+  Check, 
+  X, 
+  ArrowUpCircle, 
+  ArrowDownCircle, 
+  History, 
+  Calendar 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Edit3, Check, X, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 
 const UpdatePriceButton = ({ id, currentPrice }: { id: number, currentPrice: number }) => {
   const { updateAssetPrice } = useFinance();
@@ -139,29 +145,40 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
 
                 <form onSubmit={handleAdjust} className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">Quantity (Tokens/Coins)</label>
+                    <div className="flex justify-between items-center px-1">
+                      <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Quantity (Tokens)</label>
+                      {mode === "sell" && (
+                        <button 
+                          type="button"
+                          onClick={() => setQty(asset.quantity.toString())}
+                          className="text-[9px] font-bold text-orange-400 hover:text-orange-300 uppercase tracking-widest"
+                        >
+                          Close Full Position
+                        </button>
+                      )}
+                    </div>
                     <input 
                       type="number" step="0.00000001"
                       autoFocus
                       placeholder="0.0000"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all font-sans"
                       value={qty}
                       onChange={(e) => setQty(e.target.value)}
                     />
                   </div>
                   
-                  {mode === "buy" && (
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">Acquisition Price (per Unit)</label>
-                      <input 
-                        type="number" step="0.01"
-                        placeholder="0.00"
-                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-1">
+                      {mode === "buy" ? "Acquisition Price" : "Sale Price"} (per Unit) (USD)
+                    </label>
+                    <input 
+                      type="number" step="0.00000001"
+                      placeholder="0.00"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all font-sans"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                    />
+                  </div>
 
                   <div className="pt-4 flex gap-3">
                     <Button 
@@ -191,8 +208,154 @@ const PositionManager = ({ asset }: { asset: Asset }) => {
   );
 };
 
+const AssetTransactions = ({ asset }: { asset: Asset }) => {
+  if (!asset.transactions || asset.transactions.length === 0) return (
+    <div className="py-4 text-center opacity-20 text-[10px] font-bold uppercase tracking-widest bg-white/[0.01]">
+      No transaction history
+    </div>
+  );
+
+  return (
+    <div className="bg-white/[0.01] border-y border-white/5 py-3 divide-y divide-white/5 mx-8 font-sans">
+      {asset.transactions.map((t) => (
+        <div key={t.id} className="flex items-center justify-between py-2 text-[10px]">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-6 h-6 rounded-lg flex items-center justify-center",
+              t.type === "income" ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+            )}>
+              {t.type === "income" ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            </div>
+            <div>
+              <p className="font-bold text-white uppercase tracking-tight">{t.description}</p>
+              <div className="flex items-center gap-2 opacity-40">
+                <Calendar size={8} /> 
+                <span>{new Date(t.date).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+          <p className={cn(
+            "font-black tracking-tight",
+            t.type === "income" ? "text-emerald-400" : "text-white"
+          )}>
+            {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount, "USD")}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const CryptoAssetRow = ({ asset, removeAsset }: { asset: Asset, removeAsset: (id: number) => void }) => {
+  const [showHistory, setShowHistory] = useState(false);
+  const marketValue = asset.quantity * asset.currentPrice;
+  const costBasis = asset.quantity * asset.purchasePrice;
+  const gl = marketValue - costBasis;
+  const glPercent = costBasis > 0 ? (gl / costBasis) * 100 : 0;
+
+  return (
+    <>
+      <tr className="hover:bg-white/[0.01] transition-colors group border-b border-white/5 last:border-0 font-sans">
+        <td className="px-8 py-6">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-[14px] bg-white/[0.02] border border-white/5 text-white/40 flex items-center justify-center font-black text-[10px] uppercase">
+              {asset.ticker?.substring(0, 3) || "???"}
+            </div>
+            <div>
+              <p className="text-sm font-black text-white tracking-tight uppercase">{asset.ticker}</p>
+              <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-none mt-1 truncate max-w-[120px]">{asset.name}</p>
+            </div>
+          </div>
+        </td>
+        <td className="px-8 py-6">
+          <p className="text-sm font-bold text-white tracking-tighter">{asset.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}</p>
+          <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Units Held</p>
+        </td>
+        <td className="px-8 py-6">
+          <p className="text-sm font-bold text-white/40 tracking-tighter">{formatCurrency(asset.purchasePrice, "USD")}</p>
+        </td>
+        <td className="px-8 py-6">
+          <p className="text-sm font-black text-white tracking-tighter">{formatCurrency(asset.currentPrice, "USD")}</p>
+          <UpdatePriceButton id={asset.id} currentPrice={asset.currentPrice} />
+        </td>
+        <td className="px-8 py-6">
+          <div className="flex flex-col">
+            {asset.quantity > 0 ? (
+              <>
+                <p className={cn(
+                  "text-sm font-black tracking-tighter",
+                  gl >= 0 ? "text-emerald-400" : "text-rose-400"
+                )}>
+                  {gl >= 0 ? "+" : ""}{formatCurrency(gl, "USD")}
+                </p>
+                <p className={cn(
+                  "text-[9px] font-black uppercase tracking-widest mt-0.5",
+                  gl >= 0 ? "text-emerald-500/30" : "text-rose-500/30"
+                )}>
+                  {gl >= 0 ? "+" : ""}{glPercent.toFixed(2)}%
+                </p>
+              </>
+            ) : (
+              <span className="text-[10px] text-white/10 font-bold uppercase">Fully Exited</span>
+            )}
+          </div>
+        </td>
+        <td className="px-8 py-6">
+          <div className="flex flex-col">
+            <p className={cn(
+              "text-sm font-black tracking-tighter",
+              (asset.realizedPnL || 0) >= 0 ? "text-emerald-400" : "text-rose-400"
+            )}>
+              {(asset.realizedPnL || 0) >= 0 ? "+" : ""}{formatCurrency(asset.realizedPnL || 0, "USD")}
+            </p>
+            <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Realized Gains</p>
+          </div>
+        </td>
+        <td className="px-8 py-6 text-right">
+          <div className="flex items-center justify-end gap-2">
+            <button 
+              onClick={() => setShowHistory(!showHistory)}
+              className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                showHistory ? "bg-violet-600 text-white" : "bg-white/5 text-white/20 hover:text-white"
+              )}
+              title="Transaction History"
+            >
+              <History size={14} />
+            </button>
+            <PositionManager asset={asset} />
+            <button 
+              onClick={() => removeAsset(asset.id)}
+              className="w-10 h-10 rounded-xl bg-white/5 text-white/20 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
+              title="Purge record"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        </td>
+      </tr>
+      <AnimatePresence>
+        {showHistory && (
+          <tr>
+            <td colSpan={7} className="p-0 border-b border-white/5 bg-white/[0.01]">
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <AssetTransactions asset={asset} />
+              </motion.div>
+            </td>
+          </tr>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
 export const CryptoAssets = () => {
-  const { assets, addAsset, removeAsset, updateAssetPrice } = useFinance();
+  const { assets, addAsset, removeAsset } = useFinance();
   const [isAdding, setIsAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [newAsset, setNewAsset] = useState({
@@ -251,21 +414,8 @@ export const CryptoAssets = () => {
     setIsAdding(false);
   };
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
-  };
-
   return (
-    <div className="p-8 pb-32 max-w-[1600px] mx-auto">
+    <div className="p-8 pb-32 max-w-[1600px] mx-auto font-sans">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
           <h2 className="text-5xl font-black text-white tracking-tighter mb-4 flex items-center gap-4">
@@ -275,14 +425,14 @@ export const CryptoAssets = () => {
             Monitor decentralized assets, analyze gas-adjusted entries, and track long-term hodl performance.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 font-sans">
           <div className="relative w-64">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
             <input 
               placeholder="Filter assets..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-xs text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-xs text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all font-sans"
             />
           </div>
           <Button 
@@ -295,14 +445,13 @@ export const CryptoAssets = () => {
         </div>
       </div>
 
-      {/* Stats Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
         <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 text-orange-500/10 group-hover:scale-110 transition-transform">
             <Briefcase size={48} />
           </div>
           <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Market Valuation</p>
-          <h3 className="text-5xl font-black text-white tracking-tighter mb-1">{formatCurrency(stats.totalValue)}</h3>
+          <h3 className="text-5xl font-black text-white tracking-tighter mb-1">{formatCurrency(stats.totalValue, "USD")}</h3>
           <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Aggregate Wallet Value</p>
         </Card>
 
@@ -316,7 +465,7 @@ export const CryptoAssets = () => {
               "text-5xl font-black tracking-tighter",
               stats.unrealizedProfit >= 0 ? "text-emerald-400" : "text-rose-400"
             )}>
-              {stats.unrealizedProfit >= 0 ? "+" : ""}{formatCurrency(stats.unrealizedProfit)}
+              {stats.unrealizedProfit >= 0 ? "+" : ""}{formatCurrency(stats.unrealizedProfit, "USD")}
             </h3>
             <div className={cn(
               "px-2 py-1 rounded-lg text-[10px] font-black",
@@ -328,8 +477,8 @@ export const CryptoAssets = () => {
           <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Active Position Growth</p>
         </Card>
 
-        <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 text-emerald-500/5 group-hover:scale-110 transition-transform">
+        <Card className="p-8 bg-white/[0.02] border-white/5 relative overflow-hidden group text-right">
+          <div className="absolute top-0 right-0 p-8 text-emerald-500/5 group-hover:scale-110 transition-transform origin-right">
             <CheckCircle2 size={48} />
           </div>
           <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Settled Realized Profit</p>
@@ -337,13 +486,12 @@ export const CryptoAssets = () => {
             "text-5xl font-black tracking-tighter mb-1",
             stats.realizedProfit >= 0 ? "text-emerald-400" : "text-rose-400"
           )}>
-            {stats.realizedProfit >= 0 ? "+" : ""}{formatCurrency(stats.realizedProfit)}
+            {stats.realizedProfit >= 0 ? "+" : ""}{formatCurrency(stats.realizedProfit, "USD")}
           </h3>
           <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">Total Value Extracted</p>
         </Card>
       </div>
 
-      {/* Portfolio Table */}
       <Card className="bg-white/[0.02] border-white/5 rounded-[32px] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -355,88 +503,13 @@ export const CryptoAssets = () => {
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Price</th>
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Unrealized</th>
                 <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-left">Realized</th>
-                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-center">Actions</th>
+                <th className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
-              {cryptoAssets.map((asset) => {
-                const marketValue = asset.quantity * asset.currentPrice;
-                const costBasis = asset.quantity * asset.purchasePrice;
-                const gl = marketValue - costBasis;
-                const glPercent = costBasis > 0 ? (gl / costBasis) * 100 : 0;
-
-                return (
-                  <tr key={asset.id} className="hover:bg-white/[0.01] transition-colors group">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-[14px] bg-white/[0.02] border border-white/5 text-white/40 flex items-center justify-center font-black text-[10px] uppercase">
-                          {asset.ticker?.substring(0, 3) || "???"}
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-white tracking-tight uppercase">{asset.ticker}</p>
-                          <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-none mt-1 truncate max-w-[120px]">{asset.name}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-bold text-white tracking-tighter">{asset.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}</p>
-                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Units Held</p>
-                    </td>
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-bold text-white/40 tracking-tighter">{formatCurrency(asset.purchasePrice)}</p>
-                    </td>
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-black text-white tracking-tighter">{formatCurrency(asset.currentPrice)}</p>
-                      <UpdatePriceButton id={asset.id} currentPrice={asset.currentPrice} />
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col">
-                        {asset.quantity > 0 ? (
-                          <>
-                            <p className={cn(
-                              "text-sm font-black tracking-tighter",
-                              gl >= 0 ? "text-emerald-400" : "text-rose-400"
-                            )}>
-                              {gl >= 0 ? "+" : ""}{formatCurrency(gl)}
-                            </p>
-                            <p className={cn(
-                              "text-[9px] font-black uppercase tracking-widest mt-0.5",
-                              gl >= 0 ? "text-emerald-500/30" : "text-rose-500/30"
-                            )}>
-                              {gl >= 0 ? "+" : ""}{glPercent.toFixed(2)}%
-                            </p>
-                          </>
-                        ) : (
-                          <span className="text-[10px] text-white/10 font-bold uppercase">Fully Exited</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col">
-                        <p className={cn(
-                          "text-sm font-black tracking-tighter",
-                          (asset.realizedPnL || 0) >= 0 ? "text-emerald-400" : "text-rose-400"
-                        )}>
-                          {(asset.realizedPnL || 0) >= 0 ? "+" : ""}{formatCurrency(asset.realizedPnL || 0)}
-                        </p>
-                        <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1">Realized Gains</p>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex items-center justify-center gap-2">
-                        <PositionManager asset={asset} />
-                        <button 
-                          onClick={() => removeAsset(asset.id)}
-                          className="w-10 h-10 rounded-xl bg-white/5 text-white/20 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
-                          title="Purge record"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+            <tbody className="divide-y divide-white/5 font-sans">
+              {cryptoAssets.map((asset) => (
+                <CryptoAssetRow key={asset.id} asset={asset} removeAsset={removeAsset} />
+              ))}
               {cryptoAssets.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-8 py-20 text-center">
@@ -457,7 +530,6 @@ export const CryptoAssets = () => {
         </div>
       </Card>
 
-      {/* Add Crypto Modal */}
       <AnimatePresence>
         {isAdding && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
@@ -472,12 +544,12 @@ export const CryptoAssets = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl font-sans"
             >
               <div className="p-8 border-b border-white/5 flex items-center justify-between bg-orange-600/5">
                 <div>
-                  <h3 className="text-xl font-bold text-white tracking-tight">Onboard Digital Asset</h3>
-                  <p className="text-xs text-white/40">Secure a new token entry for global tracking.</p>
+                  <h3 className="text-xl font-bold text-white tracking-tight font-sans">Onboard Digital Asset</h3>
+                  <p className="text-xs text-white/40 font-sans">Secure a new token entry for global tracking.</p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-400 flex items-center justify-center">
                   <Bitcoin size={20} />
@@ -491,7 +563,7 @@ export const CryptoAssets = () => {
                     <input 
                       autoFocus
                       placeholder="e.g., BTC"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:uppercase"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all placeholder:uppercase font-sans"
                       value={newAsset.ticker}
                       onChange={(e) => setNewAsset({ ...newAsset, ticker: e.target.value })}
                     />
@@ -500,7 +572,7 @@ export const CryptoAssets = () => {
                     <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Protocol / Name</label>
                     <input 
                       placeholder="e.g., Bitcoin"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all font-sans"
                       value={newAsset.name}
                       onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
                     />
@@ -513,7 +585,7 @@ export const CryptoAssets = () => {
                     <input 
                       type="number" step="0.00000001"
                       placeholder="0.0000"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all font-sans"
                       value={newAsset.quantity}
                       onChange={(e) => setNewAsset({ ...newAsset, quantity: e.target.value })}
                     />
@@ -521,21 +593,21 @@ export const CryptoAssets = () => {
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-white/20 uppercase tracking-widest ml-1">Current Price (USD)</label>
                     <input 
-                      type="number"
+                      type="number" step="0.00000001"
                       placeholder="0.00"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all font-sans"
                       value={newAsset.currentPrice}
                       onChange={(e) => setNewAsset({ ...newAsset, currentPrice: e.target.value })}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2 text-center p-6 rounded-2xl bg-white/[0.02] border border-white/5">
-                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Average Entry Price</p>
+                <div className="space-y-2 text-center p-6 rounded-2xl bg-white/[0.02] border border-white/5 font-sans">
+                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">Average Entry Price (USD)</p>
                   <input 
-                    type="number"
+                    type="number" step="0.00000001"
                     placeholder="0.00"
-                    className="w-full bg-transparent border-0 text-center text-2xl font-black text-white focus:outline-none placeholder:text-white/10"
+                    className="w-full bg-transparent border-0 text-center text-2xl font-black text-white focus:outline-none placeholder:text-white/10 font-sans"
                     value={newAsset.purchasePrice}
                     onChange={(e) => setNewAsset({ ...newAsset, purchasePrice: e.target.value })}
                   />

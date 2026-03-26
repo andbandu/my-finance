@@ -18,6 +18,7 @@ export const transactions = pgTable("transactions", {
   description: text("description").notNull(),
   date: timestamp("date").notNull(),
   debtId: integer("debt_id").references(() => debts.id, { onDelete: "cascade" }),
+  assetId: integer("asset_id").references(() => assets.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

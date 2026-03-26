@@ -21,9 +21,11 @@ import { motion } from "framer-motion";
 import { UpcomingInstallments } from "./UpcomingInstallments";
 import { CalendarOverview } from "./CalendarOverview";
 
-export const Dashboard = () => {
+export const Dashboard = ({ onViewAll }: { onViewAll?: () => void }) => {
   const { transactions, ledgers, currentLedgerId, removeTransaction } = useFinance();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [displayCount, setDisplayCount] = useState(6);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const totalIncome = transactions
     .filter((t: Transaction) => t.type === "income")
@@ -220,10 +222,21 @@ export const Dashboard = () => {
               <h4 className="text-2xl font-bold text-white tracking-tight">Activity</h4>
               <p className="text-xs text-white/30 font-medium">Your recent financial flow</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={onViewAll}
+                className="text-[10px] font-bold text-violet-400 uppercase tracking-widest hover:text-violet-300 transition-colors"
+              >
+                View Full Ledger
+              </button>
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
-                <input placeholder="Search transactions..." className="bg-white/5 border border-white/5 rounded-lg py-2 pl-9 pr-4 text-xs text-white placeholder:text-white/20 w-48 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all" />
+                <input 
+                  placeholder="Search transactions..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-white/5 border border-white/5 rounded-lg py-2 pl-9 pr-4 text-xs text-white placeholder:text-white/20 w-48 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all" 
+                />
               </div>
             </div>
           </motion.div>
@@ -234,8 +247,21 @@ export const Dashboard = () => {
             transition={{ delay: 0.5 }}
             className="space-y-3"
           >
-            {transactions.length > 0 ? (
-              transactions.slice(0, 6).map((t, idx) => (
+            {(() => {
+              const filtered = transactions.filter(t => 
+                t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                t.category.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+              
+              if (filtered.length === 0) {
+                return (
+                  <div className="py-20 text-center rounded-3xl border border-dashed border-white/5">
+                    <p className="text-white/20 text-sm font-medium">No transactions found.</p>
+                  </div>
+                );
+              }
+
+              return filtered.slice(0, displayCount).map((t, idx) => (
                 <motion.div 
                   key={t.id}
                   initial={{ opacity: 0, x: -10 }}
@@ -274,15 +300,17 @@ export const Dashboard = () => {
                     </button>
                   </div>
                 </motion.div>
-              ))
-            ) : (
-              <div className="py-20 text-center rounded-3xl border border-dashed border-white/5">
-                <p className="text-white/20 text-sm font-medium">No activity recorded yet.</p>
-              </div>
+              ));
+            })()}
+            {transactions.length > displayCount && (
+              <Button 
+                variant="outline" 
+                onClick={() => setDisplayCount(prev => prev + 10)}
+                className="w-full h-14 border-dashed border-white/5 text-white/30 hover:text-white hover:border-white/10 mt-4 rounded-2xl text-xs font-bold uppercase tracking-widest"
+              >
+                Load more activity
+              </Button>
             )}
-            <Button variant="outline" className="w-full h-14 border-dashed border-white/5 text-white/30 hover:text-white hover:border-white/10 mt-4 rounded-2xl text-xs font-bold uppercase tracking-widest">
-              Load more activity
-            </Button>
           </motion.div>
         </div>
         <div className="lg:col-span-4 space-y-12">

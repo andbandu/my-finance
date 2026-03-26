@@ -45,7 +45,8 @@ export async function addTransaction(data: {
   category: string;
   description: string;
   date: string;
-  debtId?: number;
+  debtId?: number | null;
+  assetId?: number | null;
 }) {
   const result = await db.insert(transactions).values({
     ...data,
@@ -128,10 +129,23 @@ export async function deleteDebt(id: number) {
 // --- Assets ---
 
 export async function getAssets(ledgerId: number) {
-  return await db.select()
+  const allAssets = await db.select()
     .from(assets)
     .where(eq(assets.ledgerId, ledgerId))
     .orderBy(desc(assets.createdAt));
+
+  const assetIds = allAssets.map(a => a.id);
+  if (assetIds.length === 0) return [];
+
+  const linkedTransactions = await db.select()
+    .from(transactions)
+    .where(inArray(transactions.assetId, assetIds))
+    .orderBy(desc(transactions.date));
+
+  return allAssets.map(asset => ({
+    ...asset,
+    transactions: linkedTransactions.filter(t => t.assetId === asset.id)
+  }));
 }
 
 export async function addAsset(data: {
